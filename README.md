@@ -4,6 +4,7 @@ Logger TXT - Quick command line logging
 Logger TXT is meant as a small tool to log activities throughout the day to a simple, portable text file, along with the date/time. Options are available to log a specific entry under a type and project. All entries are stored in log.txt which is automatically created in the folder where logger.sh resides.
 
 Example output in log.txt
+-------------------------
 
 31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
 
@@ -20,15 +21,15 @@ The main goal of this project was to create a simple logging tool which could be
 What do you use it for anyways?!?
 =================================
 
-Over time the act of loggin will be come habitual. Over the course of a day you may log any of the following and anything else you deem important.
+Over time the act of logging will be come habitual. Over the course of a day you may log any of the following and anything else you deem important.
 
-- Progress in tasks related to work and/or specific projects
+- Progress of tasks related to work and/or specific projects
   - Extremely handy when it comes to filling in hours with an employer as you can easily look up what projects were worked on, on that tuesday two weeks ago.
-- Progress in personal tasks or projects
-  - Progress logging is the main popular use of this tool
+- Progress of personal tasks or projects
+  - Progress logging is the main use of this tool
 - Purchases made
   - Extremely useful when the credit card bill comes with cryptic names of companies.
--Log important events or anything where the time that it happened is important.
+- Log important events or anything where the time that it happened is important.
   - Had an important conversation with someone? Log that you had it so you can also know when it exactly happened.
 - Log anything!
 
