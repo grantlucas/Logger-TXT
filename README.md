@@ -37,4 +37,4 @@ OSX
 ---
 
 - Visor: the terminal plugin which keeps a terminal window always available with a quick keyboard shortcut as per the game Doom and ~
-  -[Visor Home Page](http://visor.binaryage.com/)
+  - [Visor Home Page](http://visor.binaryage.com/)
