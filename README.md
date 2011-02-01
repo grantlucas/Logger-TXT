@@ -14,8 +14,22 @@ In ~/.profile add:
 
 alias l="/path/to/script/logger.sh"
 
+Example Input
+=============
+
+Without Alias
+-------------
+
+./logger.sh -t personal -p project "This is a log note with a type and project"
+
+With Alias
+----------
+
+l -t personal -p project "This is a log note with a type and project"
+
+
 Example output in log.txt
--------------------------
+=========================
 
 31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
 
