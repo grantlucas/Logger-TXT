@@ -1,4 +1,0 @@
-To install LoggerTXT copy logger.sh to your home folder.
-For quick access and usage set up an alias in .bash_profile
-
-alias l="/path/to/script/logger.sh"
