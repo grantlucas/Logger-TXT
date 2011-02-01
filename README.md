@@ -6,7 +6,9 @@ Logger TXT is meant as a small tool to log activities throughout the day to a si
 Example output in log.txt
 
 31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
+
 31/01/11 13:35 - PERSONAL - This is a log not with just a type
+
 31/01/11 13:40 - (PROJECT) - This is a log not with just a project
 
 
