@@ -43,3 +43,15 @@ OS X
 
 - Visor: the terminal plug-in which keeps a terminal window always available with a quick keyboard shortcut as per the game Doom and ~
   - [Visor Home Page](http://visor.binaryage.com/)
+
+Installation
+============
+
+To install loggerTXT simply copy logger.sh to the folder where you log file will reside. If you have multiple computers logger works really well within a folder in Dropbox. For example you could keep logger.sh and your log file in ~/Dropbox/log/ and it will automatically be synced between computers.
+
+Quick Access
+============
+
+In ~/.bash_profile add:
+
+alias l="/path/to/script/logger.sh"
