@@ -15,7 +15,7 @@ EndVersion
 usage()
 {
   sed -e 's/^//' <<EndUsage
-Usage: logger.sh [-hV] [-t type] [-p project] text
+Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s] text
 Try 'logger.sh -h' for more information.
 EndUsage
   exit 1
@@ -24,7 +24,7 @@ EndUsage
 help()
 {
   sed -e 's/^//' <<EndHelp
-Usage: logger.sh [-hV] [-t type] [-p project] text
+Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s] text
 
 With no options or input, logger.sh outputs the last 10 lines of the log.
 
@@ -35,6 +35,8 @@ Options:
     The project that the log event belongs to. This helps group log events together which might belong to the same type or which my not belong to a type at all.
   -d COUNT
     The number of lines to show when output the tail of the log. Defaults to 10.
+  -s text
+    Searches the log file for the given text and displays those entries
   -h
     Help Text.
   -V
@@ -69,9 +71,32 @@ check_log_file()
   fi 
 }
 
+search_log()
+{
+  #search the log for the serach term
+  check_log_file
+  #grep through file looking for the lines which have this
+  results=`sed = "$LOG_PATH" | grep -i $SEARCH`
+  echo -e "$results"
+  exit 0
+}
+
+# defaults if not yet defined
+dir=`dirname $0`
+LOG_PATH=$dir"/log.txt"
+LOG_TYPE=${LOG_TYPE:-''}
+LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
+LOG_PROJ=${LOG_PROJ:-''}
+
+now=`date '+%d/%m/%y %H:%M'`
+app="Log"
+
 # process options
-while getopts :t:d:p:Vh o
+while getopts t:d:p:s:Vh o
 do  case "$o" in
+  s) SEARCH=$OPTARG
+    search_log
+  ;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   d) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
@@ -90,16 +115,6 @@ shift $(($OPTIND - 1))
 
 #exit 1
 
-
-# defaults if not yet defined
-dir=`dirname $0`
-LOG_PATH=$dir"/log.txt"
-LOG_TYPE=${LOG_TYPE:-''}
-LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
-LOG_PROJ=${LOG_PROJ:-''}
-
-now=`date '+%d/%m/%y %H:%M'`
-app="Log"
 
 #take the input and add to file
 if [ ! -z "$1" ]; then
