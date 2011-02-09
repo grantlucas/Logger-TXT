@@ -94,9 +94,7 @@ app="Log"
 # process options
 while getopts t:d:p:s:Vh o
 do  case "$o" in
-  s) SEARCH=$OPTARG
-    search_log
-  ;;
+  s) SEARCH=$OPTARG;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   d) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
@@ -153,7 +151,19 @@ if [ ! -z "$1" ]; then
   #output that the event was logged
   echo "$app: $* logged$ltype$proj"
 else
-  #no options so print out line by line log file
   check_log_file
-  tail -r -n $LOG_DISPLAY_COUNT $LOG_PATH
+  if [ ! -z $SEARCH ]; then
+    #if there is a search term defined, search for it
+    if [ ! -z $LOG_DISPLAY_COUNT ]; then
+      #limit results if a limit is set
+      results=`cat $LOG_PATH | grep -i $SEARCH | tail -n $LOG_DISPLAY_COUNT`
+      echo -e "$results"
+    else
+      results=`sed = "$LOG_PATH" | grep -i $SEARCH`
+      echo -e "$results"
+    fi
+  else
+    #else print out entire log line by line
+    tail -r -n $LOG_DISPLAY_COUNT $LOG_PATH
+  fi
 fi
