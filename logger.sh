@@ -164,6 +164,6 @@ else
     fi
   else
     #else print out entire log line by line
-    tail -r -n $LOG_DISPLAY_COUNT $LOG_PATH
+    tail -n $LOG_DISPLAY_COUNT $LOG_PATH
   fi
 fi
