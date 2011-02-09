@@ -1,7 +1,7 @@
 Logger TXT - Quick command line logging
 =======================================
 
-Logger TXT is a small, shell based tool to log activities throughout the day to a simple, portable text file, along with the date/time. Options are available to log a specific entry under a type and project. All entries are stored in log.txt which is automatically created in the folder where logger.sh resides.
+Logger TXT is a small, shell based tool to log activities throughout the day to a simple, portable text file, along with the date/time. Options are available to log a specific entry under a type and project. All entries are stored in log.txt which is automatically created in the folder where logger.sh resides. Whether you track purchases, what you ate that day, progress on projects at work or all of the above and more, you will always have a simple, solid way of storing that information and a script that gets out of your way to get it there.
 
 Installation
 ============
