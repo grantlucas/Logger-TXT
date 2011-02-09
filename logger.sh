@@ -153,17 +153,17 @@ if [ ! -z "$1" ]; then
 else
   check_log_file
   if [ ! -z $SEARCH ]; then
-#if there is a search term defined, search for it
-      
-    if [ -z $LOG_DISPLAY_COUNT ]; then
-      results=`sed = "$LOG_PATH" | grep -i $SEARCH`
-      echo -e "$results" | tail -r -n $LOG_DISPLAY_COUNT
+    #if there is a search term defined, search for it
+    if [ ! -z $LOG_DISPLAY_COUNT ]; then
+      #limit results if a limit is set
+      results=`cat $LOG_PATH | grep -i $SEARCH | tail -n $LOG_DISPLAY_COUNT`
+      echo -e "$results"
     else
       results=`sed = "$LOG_PATH" | grep -i $SEARCH`
       echo -e "$results"
     fi
   else
-#else print out entire log line by line
+    #else print out entire log line by line
     tail -r -n $LOG_DISPLAY_COUNT $LOG_PATH
   fi
 fi
