@@ -12,3 +12,4 @@ Searching
 Bugs
 ----
 - $'s are not properly escaped
+- !'s are not properly escaped
