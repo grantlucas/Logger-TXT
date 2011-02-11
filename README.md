@@ -17,6 +17,7 @@ Location of log file
 There are two options for defining where your log file is to be saved.
 
 1) Setting an environment variable
+
   - In ~/.profile add:
 
   export LOGGERTXT\_PATH=~/Dropbox/log/log.txt
