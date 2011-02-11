@@ -1,12 +1,31 @@
 Logger TXT - Quick command line logging
 =======================================
 
-Logger TXT is a small, shell based tool to log activities throughout the day to a simple, portable text file, along with the date/time. Options are available to log a specific entry under a type and project. All entries are stored in log.txt which is automatically created in the folder where logger.sh resides. Whether you track purchases, what you ate that day, progress on projects at work or all of the above and more, you will always have a simple, solid way of storing that information and a script that gets out of your way to get it there.
+Logger TXT is a small, shell based tool to log activities throughout the day to a simple, portable text file, along with the date/time. Options are available to log a specific entry under a type and project. All entries are stored in a simple TXT file. Whether you track purchases, what you ate that day, progress on projects at work or all of the above and more, you will always have a simple, solid way of storing that information and a script that gets out of your way to get it there.
 
 Installation
 ============
 
-To install loggerTXT simply copy logger.sh to the folder where you log file will reside. If you have multiple computers logger works really well within a folder in Dropbox. For example you could keep logger.sh and your log file in ~/Dropbox/log/ and it will automatically be synced between computers.
+Location of log script
+----------------------
+
+To install loggerTXT simply copy logger.sh to where you would like it to be stored on your computer. If you have multiple computers logger works really well within a folder in Dropbox. For example you could keep logger.sh and your log file in ~/Dropbox/log/ and it will automatically be synced between computers.
+
+Location of log file
+--------------------
+
+There are two options for defining where your log file is to be saved.
+
+1) Setting an environment variable
+  - In ~/.profile add:
+
+  export LOGGERTXT\_PATH=~/Dropbox/log/log.txt
+
+  - Make sure you include the name of your log file. This allows you to set it to a hidden file if you desire.
+
+2) Default action if no environment variable set
+  - If no LOGGERTXT\_PATH is set, a log.txt file will be created in the folder where logger.sh is located.
+
 
 Quick Command Line Access
 =========================
