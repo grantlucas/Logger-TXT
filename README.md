@@ -25,6 +25,7 @@ There are two options for defining where your log file is to be saved.
   - Make sure you include the name of your log file. This allows you to set it to a hidden file if you desire.
 
 2) Default action if no environment variable set
+
   - If no LOGGERTXT\_PATH is set, a log.txt file will be created in the folder where logger.sh is located.
 
 
