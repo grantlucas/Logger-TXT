@@ -83,7 +83,14 @@ search_log()
 
 # defaults if not yet defined
 dir=`dirname $0`
-LOG_PATH=$dir"/log.txt"
+
+#set the log path to the environment variable if it is set
+if [ ! -z $LOGGERTXT_PATH ]; then
+  LOG_PATH=$LOGGERTXT_PATH
+else
+  LOG_PATH=$dir"/log.txt"
+fi
+
 LOG_TYPE=${LOG_TYPE:-''}
 LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
