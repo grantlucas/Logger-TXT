@@ -11,9 +11,8 @@ Searching
 
 Improvements
 ------------
-- Allow the user to set where their todo file should be located
-  - configuration file in home folder?
-    - a la [Todo TXT Config](https://github.com/ginatrapani/todo.txt-cli/blob/master/todo.cfg)
+- Ability to create a status report
+  - Still formulating how this will work and what the result will be
 
 Bugs
 ----
