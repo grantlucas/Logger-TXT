@@ -3,6 +3,8 @@ Todo
 
 Searching
 ---------
+- Add case sensitive search as -S option
+  - Update help text for case sensitive/insensitive searching
 - Add ability to search specifically by type and/or project 
   - examples
     - Just show all "WORK" related entries
