@@ -15,6 +15,9 @@ Improvements
 ------------
 - Ability to create a status report
   - Still formulating how this will work and what the result will be
+- Web App instead of native mobile app
+  - Ties into dropbox
+  - Do everything that I'd want to do with a native app, but on the web
 
 Bugs
 ----
