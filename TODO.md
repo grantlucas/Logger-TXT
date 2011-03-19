@@ -18,6 +18,7 @@ Improvements
 - Web App instead of native mobile app
   - Ties into dropbox
   - Do everything that I'd want to do with a native app, but on the web
+  - Write in zend?
 
 Bugs
 ----
