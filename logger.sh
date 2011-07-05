@@ -41,7 +41,48 @@ Options:
     Help Text.
   -V
     Show version information and credits.
+  -x
+    Deletes the last line from the log file. This allows for quick corrections of messed up log items which were just entered.
 EndHelp
+  exit 1
+}
+
+deleteLast()
+{
+  #only act if the log file exists
+  if [ -e $LOG_PATH ]; then
+    echo ""
+    echo "Deleted last line from file";
+    `sed '$d' < $LOG_PATH > $dir"/log.txt.backup"`
+    `mv $dir"/log.txt.backup" $LOG_PATH`
+  fi
+
+}
+
+confirmDeleteLast()
+{
+  #delete the last line from the file. mainly used for quick fixes of mistakes
+
+  #get the last line for confirmation
+  LAST_LINE=`tail -n 1 $LOG_PATH`
+  echo ""
+  echo "Warning: You are removing the line below which appears at the end of the log file."
+  echo ""
+  echo "-------------------"
+  echo $LAST_LINE
+  echo "-------------------"
+  echo ""
+  echo "Do you wish to continue? (Y/n)"
+
+  read CONFIRM
+
+  case $CONFIRM in
+    Y) deleteLast;;
+    n|*) 
+      echo ""
+      echo "No line deleted"
+      ;;
+  esac
   exit 1
 }
 
@@ -99,8 +140,9 @@ now=`date '+%d/%m/%y %H:%M'`
 app="Log"
 
 # process options
-while getopts t:d:p:s:Vh o
+while getopts xt:d:p:s:Vh o
 do  case "$o" in
+  x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   d) LOG_DISPLAY_COUNT=$OPTARG;;
