@@ -19,6 +19,8 @@ Improvements
   - Ties into dropbox
   - Do everything that I'd want to do with a native app, but on the web
   - Write in zend?
+- Add time limit for deleting the last line from the file
+  - Make is so that this must be triggered within a time limit from the time the last line was entered. This will help prevent accidental deletions later in time
 
 Bugs
 ----
