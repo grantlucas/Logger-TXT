@@ -21,6 +21,7 @@ Improvements
   - Write in zend?
 - Add time limit for deleting the last line from the file
   - Make is so that this must be triggered within a time limit from the time the last line was entered. This will help prevent accidental deletions later in time
+- Ability to list items between certain dates or within the previous X days etc
 
 Bugs
 ----
