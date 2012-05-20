@@ -20,7 +20,7 @@ There are two options for defining where your log file is to be saved.
 
   - In ~/.profile add:
 
-  export LOGGERTXT\_PATH=~/Dropbox/log/log.txt
+    export LOGGERTXT\_PATH=~/Dropbox/log/log.txt
 
   - Make sure you include the name of your log file. This allows you to set it to a hidden file if you desire.
 
@@ -48,18 +48,13 @@ With Alias
 
     l -t personal -p project "This is a log note with a type and project"
 
-
 Example output in log.txt
 =========================
 
     31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
-
     31/01/11 13:35 - PERSONAL - This is a log not with just a type
-
     31/01/11 13:40 - (PROJECT) - This is a log not with just a project
-
     31/01/11 13:45 - This is just a general event which doesn't belong to anything
-
 
 Main Goals
 ==========
