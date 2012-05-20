@@ -33,7 +33,7 @@ Quick Command Line Access
 =========================
 In ~/.profile add:
 
-alias l="/path/to/script/logger.sh"
+    alias l="/path/to/script/logger.sh"
 
 Example Input
 =============
@@ -41,24 +41,24 @@ Example Input
 Without Alias
 -------------
 
-./logger.sh -t personal -p project "This is a log note with a type and project"
+    ./logger.sh -t personal -p project "This is a log note with a type and project"
 
 With Alias
 ----------
 
-l -t personal -p project "This is a log note with a type and project"
+    l -t personal -p project "This is a log note with a type and project"
 
 
 Example output in log.txt
 =========================
 
-31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
+    31/01/11 13:30 - PERSONAL (PROJECT) - This is a log note with a type and project
 
-31/01/11 13:35 - PERSONAL - This is a log not with just a type
+    31/01/11 13:35 - PERSONAL - This is a log not with just a type
 
-31/01/11 13:40 - (PROJECT) - This is a log not with just a project
+    31/01/11 13:40 - (PROJECT) - This is a log not with just a project
 
-31/01/11 13:45 - This is just a general event which doesn't belong to anything
+    31/01/11 13:45 - This is just a general event which doesn't belong to anything
 
 
 Main Goals
