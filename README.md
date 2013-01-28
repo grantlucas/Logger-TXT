@@ -82,5 +82,9 @@ Tools to make it simpler and easier
 OS X
 ----
 
-- Visor: the terminal plug-in which keeps a terminal window always available with a quick keyboard shortcut as per the game Doom and ~
-  - [Visor Home Page](http://visor.binaryage.com/)
+- [iTerm2](http://www.iterm2.com/)
+  - **Recommended**
+  - More advanced program than the stock Terminal.app
+  - Comes with a built in quick view window so you can quickly bring up a terminal window to user LoggerTXT
+- [Visor](http://visor.binaryage.com/)
+  - Terminal.app symbol plug-in which keeps a terminal window always available with a quick keyboard shortcut as per the game Doom and ~
