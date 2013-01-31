@@ -3,11 +3,12 @@
 version()
 {
   sed -e 's/^//' <<EndVersion
-Logger.txt
-Version 1.1
-Author:  Grant Lucas (www.grantlucas.com)
-Last updated:  31/01/2011
-Release date:  26/07/2010
+  Logger-TXT
+  Version 2.0
+  Author: Grant Lucas (contact@grantlucas.com)
+  Last updated: 30/01/2013
+  Release date: 26/07/2010
+  License: GPL, http://www.gnu.org/copyleft/gpl.html
 EndVersion
   exit 1
 }
@@ -33,7 +34,7 @@ Options:
     The type classification that the log event belongs to. example: work, school etc.
   -p PROJECT
     The project that the log event belongs to. This helps group log events together which might belong to the same type or which my not belong to a type at all.
-  -d COUNT
+  -c COUNT
     The number of lines to show when output the tail of the log. Defaults to 10.
   -s text
     Searches the log file for the given text and displays those entries
@@ -123,7 +124,7 @@ search_log()
 }
 
 # defaults if not yet defined
-dir=`dirname $0`
+dir=$HOME
 
 #set the log path to the environment variable if it is set
 if [ ! -z $LOGGERTXT_PATH ]; then
@@ -137,15 +138,15 @@ LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
 
 now=`date '+%d/%m/%y %H:%M'`
-app="Log"
+app="Logger-TXT"
 
 # process options
-while getopts xt:d:p:s:Vh o
+while getopts xt:c:p:s:Vh o
 do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
-  d) LOG_DISPLAY_COUNT=$OPTARG;;
+  c) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   h) help;;
   V) version;;
