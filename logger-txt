@@ -34,7 +34,7 @@ Options:
     The type classification that the log event belongs to. example: work, school etc.
   -p PROJECT
     The project that the log event belongs to. This helps group log events together which might belong to the same type or which my not belong to a type at all.
-  -d COUNT
+  -c COUNT
     The number of lines to show when output the tail of the log. Defaults to 10.
   -s text
     Searches the log file for the given text and displays those entries
@@ -141,12 +141,12 @@ now=`date '+%d/%m/%y %H:%M'`
 app="Log"
 
 # process options
-while getopts xt:d:p:s:Vh o
+while getopts xt:c:p:s:Vh o
 do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
-  d) LOG_DISPLAY_COUNT=$OPTARG;;
+  c) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   h) help;;
   V) version;;
