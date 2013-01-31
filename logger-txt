@@ -124,7 +124,7 @@ search_log()
 }
 
 # defaults if not yet defined
-dir=`dirname $0`
+dir=$HOME
 
 #set the log path to the environment variable if it is set
 if [ ! -z $LOGGERTXT_PATH ]; then
@@ -138,7 +138,7 @@ LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
 
 now=`date '+%d/%m/%y %H:%M'`
-app="Log"
+app="Logger-TXT"
 
 # process options
 while getopts xt:c:p:s:Vh o
