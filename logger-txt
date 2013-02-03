@@ -242,8 +242,8 @@ else
   elif [ ! -z $SEARCH_CASE ]; then
     search_log_sensitive "$LOG_PATH" "$SEARCH_CASE" "$LOG_DISPLAY_COUNT"
   else
-    #else print out entire log line by line
-    tail -n $LOG_DISPLAY_COUNT $LOG_PATH
+    # Print limited amount of log from the end
+    OUTPUT=`tail -n $LOG_DISPLAY_COUNT $LOG_PATH`
   fi
 fi
 
