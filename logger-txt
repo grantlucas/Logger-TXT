@@ -155,13 +155,13 @@ search_log_sensitive()
 dir=$HOME
 
 #set the log path to the environment variable if it is set
-if [ ! -z $LOGGERTXT_PATH ]; then
-  LOG_PATH=$LOGGERTXT_PATH
-else
-  LOG_PATH=$dir"/log.txt"
-fi
-
+#if [ ! -z $LOGGERTXT_PATH ]; then
+  #LOG_PATH=$LOGGERTXT_PATH
+#else
   #LOG_PATH=$dir"/log.txt"
+#fi
+
+  LOG_PATH=$dir"/log.txt"
 
 
 OUTPUT=''
@@ -231,9 +231,9 @@ if [ ! -z "$1" ]; then
 
   #add text to file
   echo "$now - $category$*" >> "$LOG_PATH" 
+
   #output that the event was logged
-  #TODO: Change this to the output variable for display at the end
-  echo "$app: $* logged$ltype$proj"
+  OUTPUT="$OUTPUT$app: \"$*\" logged$ltype$proj"
 else
   check_log_file
 
