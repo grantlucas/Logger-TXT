@@ -1,7 +1,5 @@
 #!/bin/bash
 
-SCRIPT_NAME=$(basename "$0")
-
 version()
 {
   cat <<-EndVersion
@@ -179,6 +177,8 @@ LOG_PROJ=${LOG_PROJ:-''}
 
 now=`date '+%d/%m/%y %H:%M'`
 app="Logger-TXT"
+SCRIPT_NAME=$(basename "$0")
+
 
 # process options
 while getopts xt:c:p:s:S:Vvh o
