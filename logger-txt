@@ -2,48 +2,56 @@
 
 version()
 {
-  sed -e 's/^//' <<EndVersion
+  cat <<-EndVersion
   Logger-TXT
   Version 2.0
   Author: Grant Lucas (contact@grantlucas.com)
-  Last updated: 30/01/2013
+  Last updated: 03/02/2013
   Release date: 26/07/2010
   License: GPL, http://www.gnu.org/copyleft/gpl.html
 EndVersion
+
   exit 1
 }
 
 usage()
 {
-  sed -e 's/^//' <<EndUsage
-Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s] text
-Try 'logger.sh -h' for more information.
+  cat<<-EndUsage
+
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Try '$SCRIPT_NAME -h' for more information.
 EndUsage
+
   exit 1
 }
 
 help()
 {
-  sed -e 's/^//' <<EndHelp
-Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s] text
+  cat <<-EndHelp
 
-With no options or input, logger.sh outputs the last 10 lines of the log.
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+
+With no options or input, $SCRIPT_NAME outputs the last 10 lines of the log.
 
 Options:
   -t TYPE
     The type classification that the log event belongs to. example: work, school etc.
   -p PROJECT
-    The project that the log event belongs to. This helps group log events together which might belong to the same type or which my not belong to a type at all.
+    The project that the log event belongs to. This helps group log events together 
+    which might belong to the same type or which my not belong to a type at all.
   -c COUNT
     The number of lines to show when output the tail of the log. Defaults to 10.
   -s text
-    Searches the log file for the given text and displays those entries
+    Case insensitive search of the log file for the given text
+  -S text
+    Case sensitive search of the log file for the given text
   -h
     Help Text.
-  -V
+  -V | v
     Show version information and credits.
   -x
-    Deletes the last line from the log file. This allows for quick corrections of messed up log items which were just entered.
+    Deletes the last line from the log file. This allows for quick corrections of 
+    messed up log items which were just entered.
 EndHelp
   exit 1
 }
@@ -113,15 +121,41 @@ check_log_file()
   fi 
 }
 
+# Case insensitive search
 search_log()
 {
-  #search the log for the serach term
+  local file=$1
+  local term=$2
+  local count=$3
+
   check_log_file
-  #grep through file looking for the lines which have this
-  results=`sed = "$LOG_PATH" | grep -i $SEARCH`
-  echo -e "$results"
-  exit 0
+
+  # grep the file for the search term
+  results=`grep -i "$term" "$file" | tail -n $count`
+
+  # Add to the end of the results
+  OUTPUT="$OUTPUT$results"
 }
+
+# Case sensitive search
+search_log_sensitive()
+{
+  local file=$1
+  local term=$2
+  local count=$3
+
+  check_log_file
+
+  # grep the file for the search term
+  results=`grep "$term" "$file" | tail -n $count`
+
+  # Add to the end of the results
+  OUTPUT="$OUTPUT$results"
+}
+
+############################
+# Start of active script
+############################
 
 # defaults if not yet defined
 dir=$HOME
@@ -133,23 +167,27 @@ else
   LOG_PATH=$dir"/log.txt"
 fi
 
+OUTPUT=''
 LOG_TYPE=${LOG_TYPE:-''}
 LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
 
 now=`date '+%d/%m/%y %H:%M'`
 app="Logger-TXT"
+SCRIPT_NAME=$(basename "$0")
+
 
 # process options
-while getopts xt:c:p:s:Vh o
+while getopts xt:c:p:s:S:Vvh o
 do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
+  S) SEARCH_CASE=$OPTARG;;
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   c) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   h) help;;
-  V) version;;
+  V|v) version;;
   [?]) usage;;
   esac
 done
@@ -198,22 +236,21 @@ if [ ! -z "$1" ]; then
 
   #add text to file
   echo "$now - $category$*" >> "$LOG_PATH" 
+
   #output that the event was logged
-  echo "$app: $* logged$ltype$proj"
+  OUTPUT="$OUTPUT\"$*\" logged$ltype$proj"
 else
   check_log_file
+
   if [ ! -z $SEARCH ]; then
-    #if there is a search term defined, search for it
-    if [ ! -z $LOG_DISPLAY_COUNT ]; then
-      #limit results if a limit is set
-      results=`cat $LOG_PATH | grep -i $SEARCH | tail -n $LOG_DISPLAY_COUNT`
-      echo -e "$results"
-    else
-      results=`sed = "$LOG_PATH" | grep -i $SEARCH`
-      echo -e "$results"
-    fi
+    search_log "$LOG_PATH" "$SEARCH" "$LOG_DISPLAY_COUNT"
+  elif [ ! -z $SEARCH_CASE ]; then
+    search_log_sensitive "$LOG_PATH" "$SEARCH_CASE" "$LOG_DISPLAY_COUNT"
   else
-    #else print out entire log line by line
-    tail -n $LOG_DISPLAY_COUNT $LOG_PATH
+    # Print limited amount of log from the end
+    OUTPUT=`tail -n $LOG_DISPLAY_COUNT $LOG_PATH`
   fi
 fi
+
+# Print the output
+echo -e "$OUTPUT"
