@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_NAME=$(basename "$0")
+
 version()
 {
   cat <<-EndVersion
@@ -18,8 +20,8 @@ usage()
 {
   cat<<-EndUsage
 
-Usage: logger-txt [-hVv] [-t type] [-p project] [-d count] [-s|S] text
-Try 'logger-txt -h' for more information.
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Try '$SCRIPT_NAME -h' for more information.
 EndUsage
 
   exit 1
@@ -29,9 +31,9 @@ help()
 {
   cat <<-EndHelp
 
-Usage: logger-txt [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
 
-With no options or input, logger-txt outputs the last 10 lines of the log.
+With no options or input, $SCRIPT_NAME outputs the last 10 lines of the log.
 
 Options:
   -t TYPE
@@ -239,7 +241,7 @@ if [ ! -z "$1" ]; then
   echo "$now - $category$*" >> "$LOG_PATH" 
 
   #output that the event was logged
-  OUTPUT="$OUTPUT$app: \"$*\" logged$ltype$proj"
+  OUTPUT="$OUTPUT\"$*\" logged$ltype$proj"
 else
   check_log_file
 
