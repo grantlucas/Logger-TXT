@@ -2,7 +2,7 @@
 
 version()
 {
-  sed -e 's/^//' <<EndVersion
+  cat <<-EndVersion
   Logger-TXT
   Version 2.0
   Author: Grant Lucas (contact@grantlucas.com)
@@ -10,30 +10,35 @@ version()
   Release date: 26/07/2010
   License: GPL, http://www.gnu.org/copyleft/gpl.html
 EndVersion
+
   exit 1
 }
 
 usage()
 {
-  sed -e 's/^//' <<EndUsage
-Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s|S] text
-Try 'logger.sh -h' for more information.
+  cat<<-EndUsage
+
+Usage: logger-txt [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Try 'logger-txt -h' for more information.
 EndUsage
+
   exit 1
 }
 
 help()
 {
-  sed -e 's/^//' <<EndHelp
-Usage: logger.sh [-hV] [-t type] [-p project] [-d count] [-s] text
+  cat <<-EndHelp
 
-With no options or input, logger.sh outputs the last 10 lines of the log.
+Usage: logger-txt [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+
+With no options or input, logger-txt outputs the last 10 lines of the log.
 
 Options:
   -t TYPE
     The type classification that the log event belongs to. example: work, school etc.
   -p PROJECT
-    The project that the log event belongs to. This helps group log events together which might belong to the same type or which my not belong to a type at all.
+    The project that the log event belongs to. This helps group log events together 
+    which might belong to the same type or which my not belong to a type at all.
   -c COUNT
     The number of lines to show when output the tail of the log. Defaults to 10.
   -s text
@@ -42,10 +47,11 @@ Options:
     Case sensitive search of the log file for the given text
   -h
     Help Text.
-  -V
+  -V | v
     Show version information and credits.
   -x
-    Deletes the last line from the log file. This allows for quick corrections of messed up log items which were just entered.
+    Deletes the last line from the log file. This allows for quick corrections of 
+    messed up log items which were just entered.
 EndHelp
   exit 1
 }
@@ -173,7 +179,7 @@ now=`date '+%d/%m/%y %H:%M'`
 app="Logger-TXT"
 
 # process options
-while getopts xt:c:p:s:S:Vh o
+while getopts xt:c:p:s:S:Vvh o
 do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
@@ -182,7 +188,7 @@ do  case "$o" in
   c) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   h) help;;
-  V) version;;
+  V|v) version;;
   [?]) usage;;
   esac
 done
