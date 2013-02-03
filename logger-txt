@@ -161,14 +161,11 @@ search_log_sensitive()
 dir=$HOME
 
 #set the log path to the environment variable if it is set
-#if [ ! -z $LOGGERTXT_PATH ]; then
-  #LOG_PATH=$LOGGERTXT_PATH
-#else
-  #LOG_PATH=$dir"/log.txt"
-#fi
-
+if [ ! -z $LOGGERTXT_PATH ]; then
+  LOG_PATH=$LOGGERTXT_PATH
+else
   LOG_PATH=$dir"/log.txt"
-
+fi
 
 OUTPUT=''
 LOG_TYPE=${LOG_TYPE:-''}
