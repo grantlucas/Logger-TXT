@@ -6,9 +6,8 @@ version()
   Logger-TXT
   Version 2.0
   Author: Grant Lucas (contact@grantlucas.com)
-  Last updated: 03/02/2013
+  Last updated: 16/12/2013
   Release date: 26/07/2010
-  License: GPL, http://www.gnu.org/copyleft/gpl.html
 EndVersion
 
   exit 1
@@ -195,12 +194,6 @@ done
 shift $(($OPTIND - 1))
 
 #The remaining text is the log text.
-#FIXME: Escape log text of special characters which will mess up the insert. Mainly $'s
-#log_text=`echo "$*" | sed -e 's/\$/\\\$/g'`
-#echo $log_text
-
-#exit 1
-
 
 #take the input and add to file
 if [ ! -z "$1" ]; then
