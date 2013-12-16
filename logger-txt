@@ -8,6 +8,7 @@ version()
   Author: Grant Lucas (contact@grantlucas.com)
   Last updated: 16/12/2013
   Release date: 26/07/2010
+  License: GPL, http://www.gnu.org/copyleft/gpl.html
 EndVersion
 
   exit 1
