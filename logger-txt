@@ -18,7 +18,7 @@ usage()
 {
   cat<<-EndUsage
 
-Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] [-f path] text
 Try '$SCRIPT_NAME -h' for more information.
 EndUsage
 
@@ -29,7 +29,7 @@ help()
 {
   cat <<-EndHelp
 
-Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] text
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] [-f path] text
 
 With no options or input, $SCRIPT_NAME outputs the last 10 lines of the log.
 
@@ -45,13 +45,16 @@ Options:
     Case insensitive search of the log file for the given text
   -S text
     Case sensitive search of the log file for the given text
+  -f path
+    File path to use for the log file. This is mainly for testing and the recommended
+    method is to export LOGGERTXT_PATH as an environment variable.
   -h
     Help Text.
   -V | v
     Show version information and credits.
   -x
     Deletes the last line from the log file. This allows for quick corrections of 
-    messed up log items which were just entered.
+    log items which were just entered.
 EndHelp
   exit 1
 }
