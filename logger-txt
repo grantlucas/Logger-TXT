@@ -175,7 +175,7 @@ LOG_TYPE=${LOG_TYPE:-''}
 LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
 
-now=`date '+%d/%m/%y %H:%M'`
+now=`date '+%d/%m/%y %H:%M %z'`
 app="Logger-TXT"
 SCRIPT_NAME=$(basename "$0")
 
