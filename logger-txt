@@ -181,7 +181,7 @@ SCRIPT_NAME=$(basename "$0")
 
 
 # process options
-while getopts xt:c:p:s:S:Vvh o
+while getopts xt:c:p:s:S:f:Vvh o
 do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
@@ -189,6 +189,7 @@ do  case "$o" in
   t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
   c) LOG_DISPLAY_COUNT=$OPTARG;;
   p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
+  f) LOG_PATH=$OPTARG;;
   h) help;;
   V|v) version;;
   [?]) usage;;
