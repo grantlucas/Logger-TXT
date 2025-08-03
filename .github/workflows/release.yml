@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  upload-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+      
+      - name: Update version in script
+        run: |
+          # Extract version from release tag (remove 'v' prefix if present)
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          
+          # Get current date
+          CURRENT_DATE=$(date '+%d/%m/%Y')
+          
+          # Update version and last updated date in the script
+          sed -i "s/Version .*/Version $VERSION/" logger-txt
+          sed -i "s/Last updated: .*/Last updated: $CURRENT_DATE/" logger-txt
+          
+          # Update release URL to point to this specific release
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"
+          sed -i "s|Release: .*|Release: $RELEASE_URL|" logger-txt
+      
+      - name: Commit version updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add logger-txt
+          git commit -m "Update version to ${{ github.event.release.tag_name }} and release URL"
+          git push origin main
+      
+      - name: Upload logger-txt script
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./logger-txt
+          asset_name: logger-txt
+          asset_content_type: application/octet-stream

@@ -9,6 +9,7 @@ version()
   Last updated: 11/02/2014
   Release date: 26/07/2010
   License: GPL, http://www.gnu.org/copyleft/gpl.html
+  Release: https://github.com/grantlucas/Logger-TXT/releases/latest
 EndVersion
 
   exit 1
