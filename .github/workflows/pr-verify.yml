@@ -3,23 +3,19 @@ name: PR Verification
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - 'logger-txt'
-      - 'test-logger-txt.sh'
-      - '.github/workflows/pr-verify.yml'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Make scripts executable
       run: |
         chmod +x logger-txt
         chmod +x test-logger-txt.sh
-    
+
     - name: Run test suite
       run: ./test-logger-txt.sh
