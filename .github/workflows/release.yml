@@ -25,11 +25,11 @@ jobs:
           
           # Update version and last updated date in the script
           sed -i "s/Version .*/Version $VERSION/" logger-txt
-          sed -i "s/Last updated: .*/Last updated: $CURRENT_DATE/" logger-txt
+          sed -i "s#Last updated: .*#Last updated: $CURRENT_DATE#" logger-txt
           
           # Update release URL to point to this specific release
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"
-          sed -i "s|Release: .*|Release: $RELEASE_URL|" logger-txt
+          sed -i "s#Release: .*#Release: $RELEASE_URL#" logger-txt
       
       - name: Commit version updates
         run: |
