@@ -31,13 +31,30 @@ jobs:
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"
           sed -i "s#Release: .*#Release: $RELEASE_URL#" logger-txt
       
-      - name: Commit version updates
+      - name: Create PR with version updates
         run: |
+          # Create a new branch for the version update
+          BRANCH_NAME="release-version-update-${{ github.event.release.tag_name }}"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Commit changes
           git add logger-txt
           git commit -m "Update version to ${{ github.event.release.tag_name }} and release URL"
-          git push origin main
+          git push origin "$BRANCH_NAME"
+          
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title "Update version to ${{ github.event.release.tag_name }}" \
+            --body "Automated version update from release ${{ github.event.release.tag_name }}" \
+            --label "ignore-for-release" \
+            --base main \
+            --head "$BRANCH_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload logger-txt script
         uses: actions/upload-release-asset@v1
