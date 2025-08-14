@@ -19,7 +19,7 @@ usage()
 {
   cat<<-EndUsage
 
-Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] [-f path] text
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-c count] [-s|S] [-f path] text
 Try '$SCRIPT_NAME -h' for more information.
 EndUsage
 
@@ -30,7 +30,7 @@ help()
 {
   cat <<-EndHelp
 
-Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-d count] [-s|S] [-f path] text
+Usage: $SCRIPT_NAME [-hVv] [-t type] [-p project] [-c count] [-s|S] [-f path] text
 
 With no options or input, $SCRIPT_NAME outputs the last 10 lines of the log.
 
