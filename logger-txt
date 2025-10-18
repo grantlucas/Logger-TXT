@@ -77,7 +77,7 @@ confirmDeleteLast()
   #delete the last line from the file. mainly used for quick fixes of mistakes
 
   #get the last line for confirmation
-  LAST_LINE=`tail -n 1 $LOG_PATH`
+  LAST_LINE=$(tail -n 1 $LOG_PATH)
   echo ""
   echo "Warning: You are removing the line below which appears at the end of the log file."
   echo ""
@@ -135,7 +135,7 @@ search_log()
   check_log_file
 
   # grep the file for the search term
-  results=`grep -i "$term" "$file" | tail -n $count`
+  results=$(grep -i "$term" "$file" | tail -n $count)
 
   # Add to the end of the results
   OUTPUT="$OUTPUT$results"
@@ -151,7 +151,7 @@ search_log_sensitive()
   check_log_file
 
   # grep the file for the search term
-  results=`grep "$term" "$file" | tail -n $count`
+  results=$(grep "$term" "$file" | tail -n $count)
 
   # Add to the end of the results
   OUTPUT="$OUTPUT$results"
@@ -176,7 +176,7 @@ LOG_TYPE=${LOG_TYPE:-''}
 LOG_DISPLAY_COUNT=${LOG_DISPLAY_COUNT:-10}
 LOG_PROJ=${LOG_PROJ:-''}
 
-now=`date '+%d/%m/%y %H:%M %z'`
+now=$(date '+%d/%m/%y %H:%M %z')
 app="Logger-TXT"
 SCRIPT_NAME=$(basename "$0")
 
@@ -187,9 +187,9 @@ do  case "$o" in
   x) confirmDeleteLast;;
   s) SEARCH=$OPTARG;;
   S) SEARCH_CASE=$OPTARG;;
-  t) LOG_TYPE=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
+  t) LOG_TYPE=$(echo "$OPTARG" | tr "[:lower:]" "[:upper:]");;
   c) LOG_DISPLAY_COUNT=$OPTARG;;
-  p) LOG_PROJ=`echo "$OPTARG" | tr "[:lower:]" "[:upper:]"`;;
+  p) LOG_PROJ=$(echo "$OPTARG" | tr "[:lower:]" "[:upper:]");;
   f) LOG_PATH=$OPTARG;;
   h) help;;
   V|v) version;;
@@ -247,7 +247,7 @@ else
     search_log_sensitive "$LOG_PATH" "$SEARCH_CASE" "$LOG_DISPLAY_COUNT"
   else
     # Print limited amount of log from the end
-    OUTPUT=`tail -n $LOG_DISPLAY_COUNT $LOG_PATH`
+    OUTPUT=$(tail -n $LOG_DISPLAY_COUNT $LOG_PATH)
   fi
 fi
 
