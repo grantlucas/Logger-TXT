@@ -417,6 +417,61 @@ test_timestamp_format() {
     fi
 }
 
+# Test delete functionality with spaces in path (Issue #30)
+test_delete_with_spaces_in_path() {
+    local temp_dir="/tmp/logger test dir"
+    local temp_log="$temp_dir/test log.txt"
+
+    # Create directory with spaces
+    mkdir -p "$temp_dir"
+
+    # Add two entries
+    "$LOGGER_SCRIPT" -f "$temp_log" "First entry" > /dev/null 2>&1
+    "$LOGGER_SCRIPT" -f "$temp_log" "Entry to be deleted" > /dev/null 2>&1
+
+    # Verify both entries exist
+    if ! grep -q "First entry" "$temp_log" || ! grep -q "Entry to be deleted" "$temp_log"; then
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    # Delete last entry (simulate 'Y' response)
+    echo "Y" | "$LOGGER_SCRIPT" -f "$temp_log" -x > /dev/null 2>&1
+
+    # Verify first entry still exists and second is gone
+    if grep -q "First entry" "$temp_log" && ! grep -q "Entry to be deleted" "$temp_log"; then
+        rm -rf "$temp_dir"
+        return 0
+    else
+        rm -rf "$temp_dir"
+        return 1
+    fi
+}
+
+# Test file creation with spaces in path (Issue #30)
+test_file_creation_with_spaces() {
+    local temp_dir="/tmp/logger test dir 2"
+    local temp_log="$temp_dir/new log.txt"
+
+    # Create directory with spaces
+    mkdir -p "$temp_dir"
+
+    # Remove log file if it exists
+    rm -f "$temp_log"
+
+    # Create log in non-existent file with spaces in path
+    "$LOGGER_SCRIPT" -f "$temp_log" "File creation test with spaces" > /dev/null 2>&1
+
+    # Check if file was created and is readable/writable
+    if [[ -f "$temp_log" ]] && [[ -r "$temp_log" ]] && [[ -w "$temp_log" ]] && grep -q "File creation test with spaces" "$temp_log"; then
+        rm -rf "$temp_dir"
+        return 0
+    else
+        rm -rf "$temp_dir"
+        return 1
+    fi
+}
+
 print_summary() {
     echo ""
     echo "================================================"
@@ -462,6 +517,8 @@ main() {
     run_test "File Creation" test_file_creation
     run_test "Help and Version" test_help_version
     run_test "Timestamp Format" test_timestamp_format
+    run_test "Delete with Spaces in Path (Issue #30)" test_delete_with_spaces_in_path
+    run_test "File Creation with Spaces (Issue #30)" test_file_creation_with_spaces
 
     print_summary
 }
