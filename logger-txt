@@ -63,11 +63,11 @@ EndHelp
 deleteLast()
 {
   #only act if the log file exists
-  if [ -e $LOG_PATH ]; then
+  if [ -e "$LOG_PATH" ]; then
     echo ""
     echo "Deleted last line from file";
-    `sed '$d' < $LOG_PATH > $dir"/log.txt.backup"`
-    `mv $dir"/log.txt.backup" $LOG_PATH`
+    sed '$d' < "$LOG_PATH" > "$dir/log.txt.backup"
+    mv "$dir/log.txt.backup" "$LOG_PATH"
   fi
 
 }
@@ -77,12 +77,12 @@ confirmDeleteLast()
   #delete the last line from the file. mainly used for quick fixes of mistakes
 
   #get the last line for confirmation
-  LAST_LINE=$(tail -n 1 $LOG_PATH)
+  LAST_LINE=$(tail -n 1 "$LOG_PATH")
   echo ""
   echo "Warning: You are removing the line below which appears at the end of the log file."
   echo ""
   echo "-------------------"
-  echo $LAST_LINE
+  echo "$LAST_LINE"
   echo "-------------------"
   echo ""
   echo "Do you wish to continue? (Y/n)"
@@ -91,7 +91,7 @@ confirmDeleteLast()
 
   case $CONFIRM in
     Y) deleteLast;;
-    n|*) 
+    n|*)
       echo ""
       echo "No line deleted"
       ;;
@@ -101,17 +101,17 @@ confirmDeleteLast()
 
 check_log_file()
 {
-  if [ -e $LOG_PATH ]; then
-    if [ ! -w $LOG_PATH ]; then
+  if [ -e "$LOG_PATH" ]; then
+    if [ ! -w "$LOG_PATH" ]; then
       echo "$app: Log file not writeable"
       exit 1
     fi
   else
     # create log file if it does not exist
     echo "$app: Creating log file"
-    `touch $LOG_PATH`
-    `chmod +w $LOG_PATH`
-    if [ -e $LOG_PATH ]; then
+    touch "$LOG_PATH"
+    chmod +w "$LOG_PATH"
+    if [ -e "$LOG_PATH" ]; then
       echo "$app: Log file successfully created"
     else
       echo "$app: Log file couldn't be created"
@@ -119,10 +119,10 @@ check_log_file()
     fi
   fi
 
-  if [ ! -r $LOG_PATH ]; then
+  if [ ! -r "$LOG_PATH" ]; then
     echo "$app: Log file is not readable"
     exit 1
-  fi 
+  fi
 }
 
 # Case insensitive search
