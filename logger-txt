@@ -4,12 +4,12 @@ version()
 {
   cat <<-EndVersion
   Logger-TXT
-  Version 2.1.7
+  Version 2.1.8
   Author: Grant Lucas (contact@grantlucas.com)
-  Last updated: 18/10/2025
+  Last updated: 19/10/2025
   Release date: 26/07/2010
   License: GPL, http://www.gnu.org/copyleft/gpl.html
-  Release: https://github.com/grantlucas/Logger-TXT/releases/tag/v2.1.7
+  Release: https://github.com/grantlucas/Logger-TXT/releases/tag/v2.1.8
 EndVersion
 
   exit 0
