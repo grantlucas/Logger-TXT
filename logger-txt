@@ -135,7 +135,7 @@ search_log()
   check_log_file
 
   # grep the file for the search term
-  results=$(grep -i "$term" "$file" | tail -n $count)
+  results=$(grep -i "$term" "$file" | tail -n "$count")
 
   # Add to the end of the results
   OUTPUT="$OUTPUT$results"
@@ -151,7 +151,7 @@ search_log_sensitive()
   check_log_file
 
   # grep the file for the search term
-  results=$(grep "$term" "$file" | tail -n $count)
+  results=$(grep "$term" "$file" | tail -n "$count")
 
   # Add to the end of the results
   OUTPUT="$OUTPUT$results"
@@ -165,7 +165,7 @@ search_log_sensitive()
 dir=$HOME
 
 #set the log path to the environment variable if it is set
-if [ ! -z "$LOGGERTXT_PATH" ]; then
+if [ -n "$LOGGERTXT_PATH" ]; then
   LOG_PATH="$LOGGERTXT_PATH"
 else
   LOG_PATH="$dir/log.txt"
@@ -202,34 +202,34 @@ shift $(($OPTIND - 1))
 #The remaining text is the log text.
 
 #take the input and add to file
-if [ ! -z "$1" ]; then
+if [ -n "$1" ]; then
   #add to log file
   check_log_file
 
-  if [ ! -z $LOG_TYPE ]; then
+  if [ -n "$LOG_TYPE" ]; then
     sep=" - "
     ltype=" under the type $LOG_TYPE"
     LOG_TYPE="$LOG_TYPE"
   fi
 
-  if [ ! -z $LOG_PROJ ]; then
+  if [ -n "$LOG_PROJ" ]; then
     sep=" - "
     proj=" in the project $LOG_PROJ"
     LOG_PROJ="($LOG_PROJ)"
   fi
 
   #there is a proj but no type
-  if [ -z $LOG_TYPE ] && [ ! -z $LOG_PROJ ]; then
+  if [ -z "$LOG_TYPE" ] && [ -n "$LOG_PROJ" ]; then
     category="$LOG_PROJ$sep"
   fi
 
   #there is a type but no proj
-  if [ ! -z $LOG_TYPE ] && [ -z $LOG_PROJ ]; then
+  if [ -n "$LOG_TYPE" ] && [ -z "$LOG_PROJ" ]; then
     category="$LOG_TYPE$sep"
   fi
 
   #there is both
-  if [ ! -z $LOG_TYPE ] && [ ! -z $LOG_PROJ ]; then
+  if [ -n "$LOG_TYPE" ] && [ -n "$LOG_PROJ" ]; then
     category="$LOG_TYPE $LOG_PROJ$sep"
   fi
 
@@ -241,13 +241,13 @@ if [ ! -z "$1" ]; then
 else
   check_log_file
 
-  if [ ! -z $SEARCH ]; then
+  if [ -n "$SEARCH" ]; then
     search_log "$LOG_PATH" "$SEARCH" "$LOG_DISPLAY_COUNT"
-  elif [ ! -z $SEARCH_CASE ]; then
+  elif [ -n "$SEARCH_CASE" ]; then
     search_log_sensitive "$LOG_PATH" "$SEARCH_CASE" "$LOG_DISPLAY_COUNT"
   else
     # Print limited amount of log from the end
-    OUTPUT=$(tail -n $LOG_DISPLAY_COUNT $LOG_PATH)
+    OUTPUT=$(tail -n "$LOG_DISPLAY_COUNT" "$LOG_PATH")
   fi
 fi
 
