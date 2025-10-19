@@ -87,7 +87,7 @@ confirmDeleteLast()
   echo ""
   echo "Do you wish to continue? (Y/n)"
 
-  read CONFIRM
+  read -r CONFIRM
 
   case $CONFIRM in
     Y) deleteLast;;
@@ -197,7 +197,7 @@ do  case "$o" in
   esac
 done
 # shift the option values out
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 #The remaining text is the log text.
 
@@ -209,7 +209,6 @@ if [ -n "$1" ]; then
   if [ -n "$LOG_TYPE" ]; then
     sep=" - "
     ltype=" under the type $LOG_TYPE"
-    LOG_TYPE="$LOG_TYPE"
   fi
 
   if [ -n "$LOG_PROJ" ]; then
