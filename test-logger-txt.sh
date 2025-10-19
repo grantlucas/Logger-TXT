@@ -6,7 +6,6 @@
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Test counters
@@ -113,7 +112,8 @@ test_append_functionality() {
     # Verify both entries exist
     if grep -q "$first_message" "$TEST_LOG_FILE" && grep -q "$second_message" "$TEST_LOG_FILE"; then
         # Verify we have exactly 2 lines
-        local line_count=$(wc -l < "$TEST_LOG_FILE")
+        local line_count
+        line_count=$(wc -l < "$TEST_LOG_FILE")
         if [[ $line_count -eq 2 ]]; then
             return 0
         fi
@@ -132,12 +132,16 @@ test_search_multiple_entries() {
     "$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" "Shopping trip" > /dev/null 2>&1
 
     # Search for "work" (case insensitive) - should find 2 entries
-    local work_results=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "work")
-    local work_count=$(echo "$work_results" | grep -c "work\|Work")
+    local work_results
+    work_results=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "work")
+    local work_count
+    work_count=$(echo "$work_results" | grep -c "work\|Work")
 
     # Search for "project" - should find 1 entry
-    local project_results=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "project")
-    local project_count=$(echo "$project_results" | grep -c "project")
+    local project_results
+    project_results=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "project")
+    local project_count
+    project_count=$(echo "$project_results" | grep -c "project")
 
     # Verify we found the expected number of matches
     if [[ $work_count -eq 2 ]] && [[ $project_count -eq 1 ]]; then
@@ -199,8 +203,10 @@ test_display_functionality() {
     done
 
     # Test default display (should show last 10, but we only have 5+previous entries)
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE")
-    local line_count=$(echo "$output" | wc -l)
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE")
+    local line_count
+    line_count=$(echo "$output" | wc -l)
 
     # Should show multiple lines
     if [[ $line_count -gt 1 ]]; then
@@ -218,8 +224,10 @@ test_display_count() {
     done
 
     # Test showing specific number of lines
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -c 2)
-    local line_count=$(echo "$output" | wc -l)
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -c 2)
+    local line_count
+    line_count=$(echo "$output" | wc -l)
 
     # Should show exactly 2 lines
     if [[ $line_count -eq 2 ]]; then
@@ -237,8 +245,10 @@ test_default_ten_line_limit() {
     done
 
     # Get default output (should be last 10 lines)
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE")
-    local line_count=$(echo "$output" | wc -l)
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE")
+    local line_count
+    line_count=$(echo "$output" | wc -l)
 
     # Should show exactly 10 lines
     if [[ $line_count -eq 10 ]]; then
@@ -260,7 +270,8 @@ test_search_insensitive() {
     "$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" "Final entry" > /dev/null 2>&1
 
     # Search for lowercase version of entry
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "searchtest")
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -s "searchtest")
 
     if echo "$output" | grep -q "SearchTest entry"; then
         return 0
@@ -277,7 +288,8 @@ test_search_sensitive() {
     "$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" "CASESENSITIVE UPPER" > /dev/null 2>&1
 
     # Search for exact case
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -S "CaseSensitive")
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -S "CaseSensitive")
 
     if echo "$output" | grep -q "CaseSensitive Entry" && ! echo "$output" | grep -q "casesensitive lowercase"; then
         return 0
@@ -293,7 +305,8 @@ test_search_sensitive_fail() {
     "$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" "Another entry" > /dev/null 2>&1
 
     # Search for wrong case (should not find CaseSensitive Entry)
-    local output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -S "casesensitive")
+    local output
+    output=$("$LOGGER_SCRIPT" -f "$TEST_LOG_FILE" -S "casesensitive")
 
     # Should not find the CaseSensitive entry
     if ! echo "$output" | grep -q "CaseSensitive Entry"; then
@@ -393,15 +406,18 @@ test_file_creation() {
 # Test help and version functions
 test_help_version() {
     # Test help output
-    local help_output=$("$LOGGER_SCRIPT" -h 2>&1)
+    local help_output
+    help_output=$("$LOGGER_SCRIPT" -h 2>&1)
     local help_exit=$?
 
     # Test version output
-    local version_output=$("$LOGGER_SCRIPT" -V 2>&1)
+    local version_output
+    version_output=$("$LOGGER_SCRIPT" -V 2>&1)
     local version_exit=$?
 
     # Test lowercase version flag
-    local version_v_output=$("$LOGGER_SCRIPT" -v 2>&1)
+    local version_v_output
+    version_v_output=$("$LOGGER_SCRIPT" -v 2>&1)
     local version_v_exit=$?
 
     # Verify output content and exit codes
