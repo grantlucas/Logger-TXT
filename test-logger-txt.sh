@@ -393,12 +393,24 @@ test_file_creation() {
 # Test help and version functions
 test_help_version() {
     # Test help output
-    local help_output=$("$LOGGER_SCRIPT" -h 2>&1 || true)
+    local help_output=$("$LOGGER_SCRIPT" -h 2>&1)
+    local help_exit=$?
 
     # Test version output
-    local version_output=$("$LOGGER_SCRIPT" -V 2>&1 || true)
+    local version_output=$("$LOGGER_SCRIPT" -V 2>&1)
+    local version_exit=$?
 
-    if echo "$help_output" | grep -q "Usage:" && echo "$version_output" | grep -q "Logger-TXT"; then
+    # Test lowercase version flag
+    local version_v_output=$("$LOGGER_SCRIPT" -v 2>&1)
+    local version_v_exit=$?
+
+    # Verify output content and exit codes
+    if echo "$help_output" | grep -q "Usage:" && \
+       echo "$version_output" | grep -q "Logger-TXT" && \
+       echo "$version_v_output" | grep -q "Logger-TXT" && \
+       [[ $help_exit -eq 0 ]] && \
+       [[ $version_exit -eq 0 ]] && \
+       [[ $version_v_exit -eq 0 ]]; then
         return 0
     else
         return 1
