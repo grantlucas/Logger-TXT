@@ -1,0 +1,10 @@
+# ShellCheck configuration for Logger-TXT
+# https://github.com/koalaman/shellcheck/wiki/Configuration
+
+# Set shell dialect
+shell=bash
+
+# Exclude style-only suggestions to focus on actual issues
+# SC2250: Prefer braces around variables (style preference)
+# SC2292: Prefer [[ ]] over [ ] (style preference)
+disable=SC2250,SC2292

@@ -12,6 +12,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install shellcheck
+      run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+    - name: Run shellcheck on logger-txt
+      run: shellcheck logger-txt
+
+    - name: Run shellcheck on test suite
+      run: shellcheck test-logger-txt.sh
+
     - name: Make scripts executable
       run: |
         chmod +x logger-txt
