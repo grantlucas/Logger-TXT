@@ -405,8 +405,10 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 - Tests run on ubuntu-latest (matches current CI); consider adding macos-latest and windows-latest matrix
 
 ### Coverage Target
-- Aim for >90% coverage on `internal/logger/` and `internal/entry/`
-- Command layer (`internal/cmd/`) covered by integration tests
+- **100% unit test coverage** across all packages (`internal/logger/`, `internal/entry/`, `internal/config/`, `internal/cmd/`)
+- Use `go test -coverprofile` and enforce with `-covermode=atomic`
+- Add `make coverage` target that fails if coverage drops below 100%
+- Integration tests provide additional confidence but are not counted toward the coverage gate
 
 ---
 
