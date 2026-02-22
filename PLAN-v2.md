@@ -28,9 +28,6 @@ Every behavior from v1 must work identically in v2 before any new features are a
 | Delete last entry | `-x` | `logger-txt delete` | Interactive confirm |
 | Custom file path | `-f path` | `--file PATH` / `-f PATH` | Global flag |
 | Env var: LOGGERTXT_PATH | `$LOGGERTXT_PATH` | `$LOGGERTXT_PATH` | Same behavior |
-| Env var: LOG_TYPE | `$LOG_TYPE` | `$LOG_TYPE` | Same |
-| Env var: LOG_PROJ | `$LOG_PROJ` | `$LOG_PROJ` | Same |
-| Env var: LOG_DISPLAY_COUNT | `$LOG_DISPLAY_COUNT` | `$LOG_DISPLAY_COUNT` | Same |
 | Help | `-h` | `--help` / `-h` | Built-in with cobra |
 | Version | `-V` / `-v` | `--version` / `-v` | Built-in with cobra |
 
@@ -142,9 +139,6 @@ That's it. No logging library, no config library. Keep it minimal.
 
 ### Phase 4: Config Resolution (`internal/config/`)
 - Resolve log file path: `--file` flag > `LOGGERTXT_PATH` env > `$HOME/log.txt`
-- Resolve type: `--type` flag > `LOG_TYPE` env > empty
-- Resolve project: `--project` flag > `LOG_PROJ` env > empty
-- Resolve count: `--count` flag > `LOG_DISPLAY_COUNT` env > 10
 - Unit tests for precedence behavior
 
 ### Phase 5: CLI Commands (`internal/cmd/`)
@@ -396,7 +390,7 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 - **Entry formatting**: Every combination of type/project/message
 - **Entry parsing**: Valid lines, malformed lines, edge cases
 - **Logger operations**: Append, tail, search, delete — all using `t.TempDir()`
-- **Config resolution**: Flag > env > default precedence
+- **Config resolution**: `--file` flag > `LOGGERTXT_PATH` env > default path
 - **Table-driven tests** throughout
 
 ### Integration Tests
@@ -431,7 +425,7 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 
 ## 8. Migration Path for Existing Users
 
-1. The Go binary is a drop-in replacement — same binary name (`logger-txt`), same env vars, same log file format
+1. The Go binary is a drop-in replacement — same binary name (`logger-txt`), same `LOGGERTXT_PATH` env var, same log file format
 2. Existing log files work without any changes
 3. The only breaking change: flags shift from `-s term` to `logger-txt search term`. To ease migration:
    - Support the old single-dash flags as hidden aliases for one major version
