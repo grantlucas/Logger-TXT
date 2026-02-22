@@ -138,7 +138,7 @@ That's it. No logging library, no config library. Keep it minimal.
 - Unit tests using `t.TempDir()` for isolated file operations
 
 ### Phase 4: Config Resolution (`internal/config/`)
-- Resolve log file path: `--file` flag > `LOGGERTXT_PATH` env > `$HOME/log.txt`
+- Resolve log file path: `--file` flag > `LOGGERTXT_PATH` env > `./log.txt` (current working directory)
 - Unit tests for precedence behavior
 
 ### Phase 5: CLI Commands (`internal/cmd/`)
@@ -390,7 +390,7 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 - **Entry formatting**: Every combination of type/project/message
 - **Entry parsing**: Valid lines, malformed lines, edge cases
 - **Logger operations**: Append, tail, search, delete — all using `t.TempDir()`
-- **Config resolution**: `--file` flag > `LOGGERTXT_PATH` env > default path
+- **Config resolution**: `--file` flag > `LOGGERTXT_PATH` env > `./log.txt`
 - **Table-driven tests** throughout
 
 ### Integration Tests
@@ -427,7 +427,8 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 
 1. The Go binary is a drop-in replacement — same binary name (`logger-txt`), same `LOGGERTXT_PATH` env var, same log file format
 2. Existing log files work without any changes
-3. The only breaking change: flags shift from `-s term` to `logger-txt search term`. To ease migration:
+3. **Default file location changed**: v1 defaults to `~/log.txt`, v2 defaults to `./log.txt` (current working directory). Users who relied on the v1 default should set `LOGGERTXT_PATH` or pass `--file` explicitly.
+4. The other breaking change: flags shift from `-s term` to `logger-txt search term`. To ease migration:
    - Support the old single-dash flags as hidden aliases for one major version
    - Print a deprecation notice when old-style flags are used
    - Remove the aliases in a future version
