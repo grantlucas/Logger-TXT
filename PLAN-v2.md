@@ -430,11 +430,8 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 1. The Go binary is a drop-in replacement — same binary name (`logger-txt`), same `LOGGERTXT_PATH` env var, same log file format
 2. Existing log files work without any changes
 3. **Default file location changed**: v1 defaults to `~/log.txt`, v2 defaults to `./log.txt` (current working directory). Users who relied on the v1 default should set `LOGGERTXT_PATH` or pass `--file` explicitly.
-4. The other breaking change: flags shift from `-s term` to `logger-txt search term`. To ease migration:
-   - Support the old single-dash flags as hidden aliases for one major version
-   - Print a deprecation notice when old-style flags are used
-   - Remove the aliases in a future version
-4. Document the migration in the release notes and README
+4. **Old flags removed**: v1 flags like `-s`, `-S`, `-c`, `-x`, `-t`, `-p` are not carried forward. v2 uses subcommands (`add`, `show`, `search`, `delete`). No hidden aliases or deprecation shims — this is a clean break.
+5. Document all breaking changes in the release notes and README
 
 ---
 
