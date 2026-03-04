@@ -34,3 +34,11 @@ func TestAddHelp(t *testing.T) {
 		"logger-txt add",
 	})
 }
+
+func TestShowHelp(t *testing.T) {
+	assertHelpContains(t, []string{"show", "--help"}, []string{
+		"newest last",
+		"pipe",
+		"logger-txt show",
+	})
+}

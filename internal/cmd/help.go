@@ -45,6 +45,24 @@ const addExample = `  # Simple message
   logger-txt add -t dev -p acme Fixed login bug
   # => 04/03/26 14:30 -0500 - DEV (ACME) - Fixed login bug`
 
+const showLong = `Display the most recent entries from the log file, newest last.
+
+Output goes to stdout with one entry per line, so it works well in a pipe:
+
+  logger-txt show | grep MEETING
+  logger-txt show -c 50 | wc -l
+
+Running "logger-txt" with no subcommand is equivalent to "logger-txt show".`
+
+const showExample = `  # Show the default last 10 entries
+  logger-txt show
+
+  # Show the last 25 entries
+  logger-txt show -c 25
+
+  # Equivalent — bare command defaults to show
+  logger-txt`
+
 const subcommandHelpTemplate = `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
 
 {{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
