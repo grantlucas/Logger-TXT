@@ -2,6 +2,7 @@
 package logger
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 
@@ -33,4 +34,27 @@ func Append(path string, e entry.Entry) error {
 	defer f.Close()
 	_, err = f.WriteString(e.Format() + "\n")
 	return err
+}
+
+// Tail returns the last n lines from the file.
+func Tail(path string, n int) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return lines, nil
 }

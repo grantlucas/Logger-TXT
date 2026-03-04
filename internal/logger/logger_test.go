@@ -131,3 +131,114 @@ func TestAppend_ErrorOnReadOnlyDirectory(t *testing.T) {
 		t.Fatal("Append() expected error for read-only directory, got nil")
 	}
 }
+
+// writeLines is a test helper that writes lines to a file.
+func writeLines(t *testing.T, path string, lines []string) {
+	t.Helper()
+	content := ""
+	for _, l := range lines {
+		content += l + "\n"
+	}
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTail_ReturnsLastNLines(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"line1", "line2", "line3", "line4", "line5"})
+
+	got, err := logger.Tail(path, 3)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	want := []string{"line3", "line4", "line5"}
+	if len(got) != len(want) {
+		t.Fatalf("Tail() returned %d lines, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Tail()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestTail_ReturnsAllLinesWhenFewerThanN(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"line1", "line2"})
+
+	got, err := logger.Tail(path, 10)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Tail() returned %d lines, want 2", len(got))
+	}
+	if got[0] != "line1" || got[1] != "line2" {
+		t.Errorf("Tail() = %v, want [line1, line2]", got)
+	}
+}
+
+func TestTail_EmptyFileReturnsEmptySlice(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	os.WriteFile(path, []byte{}, 0644)
+
+	got, err := logger.Tail(path, 10)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("Tail() returned %d lines for empty file, want 0", len(got))
+	}
+}
+
+func TestTail_HandlesWindowsLineEndings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	os.WriteFile(path, []byte("line1\r\nline2\r\nline3\r\n"), 0644)
+
+	got, err := logger.Tail(path, 2)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	want := []string{"line2", "line3"}
+	if len(got) != len(want) {
+		t.Fatalf("Tail() returned %d lines, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Tail()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestTail_ErrorOnScannerFailure(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	// bufio.Scanner has a default max token size of 64KB.
+	// A line exceeding that triggers a scan error.
+	longLine := make([]byte, 1024*1024)
+	for i := range longLine {
+		longLine[i] = 'x'
+	}
+	os.WriteFile(path, longLine, 0644)
+
+	_, err := logger.Tail(path, 10)
+	if err == nil {
+		t.Fatal("Tail() expected error for oversized line, got nil")
+	}
+}
+
+func TestTail_ErrorOnNonExistentFile(t *testing.T) {
+	_, err := logger.Tail("/nonexistent/log.txt", 10)
+	if err == nil {
+		t.Fatal("Tail() expected error for non-existent file, got nil")
+	}
+}
