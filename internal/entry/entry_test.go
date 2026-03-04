@@ -180,6 +180,34 @@ func TestFormatParseRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseEntryMessageContainsDash(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - Fixed bug - the auth one"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Message != "Fixed bug - the auth one" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed bug - the auth one")
+	}
+}
+
+func TestParseEntryTypeWithMessageContainsDash(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - WORK - Fixed bug - the auth one"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Message != "Fixed bug - the auth one" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed bug - the auth one")
+	}
+}
+
 func TestParseEntryErrors(t *testing.T) {
 	tests := []struct {
 		name string
