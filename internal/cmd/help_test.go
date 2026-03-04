@@ -42,3 +42,11 @@ func TestShowHelp(t *testing.T) {
 		"logger-txt show",
 	})
 }
+
+func TestSearchHelp(t *testing.T) {
+	assertHelpContains(t, []string{"search", "--help"}, []string{
+		"case-insensitive",
+		"matched anywhere",
+		"logger-txt search",
+	})
+}

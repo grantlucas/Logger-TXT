@@ -10,9 +10,10 @@ import (
 
 func newSearchCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "search [term]",
-		Short: "Search log entries",
-		Long:  "Search for entries matching the given term. Case-insensitive by default.",
+		Use:     "search [term]",
+		Short:   "Search log entries",
+		Long:    searchLong,
+		Example: searchExample,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")

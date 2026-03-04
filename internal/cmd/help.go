@@ -63,6 +63,21 @@ const showExample = `  # Show the default last 10 entries
   # Equivalent — bare command defaults to show
   logger-txt`
 
+const searchLong = `Search log entries for a term, case-insensitive by default.
+
+The search term is matched anywhere in the full log line, including the
+timestamp, type, project, and message. Use --case-sensitive for exact
+case matching. Results are limited to the most recent matches (default 10).`
+
+const searchExample = `  # Find all entries mentioning "deploy"
+  logger-txt search deploy
+
+  # Case-sensitive search
+  logger-txt search --case-sensitive MEETING
+
+  # Return up to 20 matches
+  logger-txt search -c 20 bug`
+
 const subcommandHelpTemplate = `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
 
 {{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
