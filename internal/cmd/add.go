@@ -13,9 +13,10 @@ import (
 
 func newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add [message]",
-		Short: "Add a new log entry",
-		Long:  "Add a new timestamped entry to the log file.",
+		Use:     "add [message]",
+		Short:   "Add a new log entry",
+		Long:    addLong,
+		Example: addExample,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			typeName, _ := cmd.Flags().GetString("type")

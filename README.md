@@ -12,8 +12,7 @@ that gets out of your way to get it there.
 ### Homebrew
 
 ```bash
-brew tap grantlucas/tap
-brew install logger-txt
+brew install grantlucas/tap/logger-txt
 ```
 
 ### Download Binary

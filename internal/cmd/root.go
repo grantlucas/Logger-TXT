@@ -9,9 +9,10 @@ var filePath string
 
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:   "logger-txt",
-		Short: "A simple command-line logging tool",
-		Long:  "Logger-TXT is a simple command-line logging tool that allows you to log activities throughout the day to a portable text file with timestamps.",
+		Use:     "logger-txt",
+		Short:   "A simple command-line logging tool",
+		Long:    rootLong,
+		Example: rootExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Default action: run show with default count
 			path := config.ResolveFilePath(filePath)
@@ -19,13 +20,20 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 
+	rootCmd.SetHelpTemplate(rootHelpTemplate)
 	rootCmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "path to log file")
 
-	rootCmd.AddCommand(newAddCmd())
-	rootCmd.AddCommand(newShowCmd())
-	rootCmd.AddCommand(newSearchCmd())
-	rootCmd.AddCommand(newDeleteCmd())
-	rootCmd.AddCommand(newVersionCmd())
+	subCmds := []*cobra.Command{
+		newAddCmd(),
+		newShowCmd(),
+		newSearchCmd(),
+		newDeleteCmd(),
+		newVersionCmd(),
+	}
+	for _, sub := range subCmds {
+		sub.SetHelpTemplate(subcommandHelpTemplate)
+		rootCmd.AddCommand(sub)
+	}
 
 	return rootCmd
 }

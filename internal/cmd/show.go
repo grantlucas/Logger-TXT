@@ -24,9 +24,10 @@ func runShow(out io.Writer, path string, count int) error {
 
 func newShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "show",
-		Short: "Show recent log entries",
-		Long:  "Display the most recent entries from the log file.",
+		Use:     "show",
+		Short:   "Show recent log entries",
+		Long:    showLong,
+		Example: showExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			count, _ := cmd.Flags().GetInt("count")
 			path := config.ResolveFilePath(filePath)
