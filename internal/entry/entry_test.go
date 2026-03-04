@@ -60,3 +60,16 @@ func TestFormatTypeProjectAndMessage(t *testing.T) {
 		t.Errorf("Format() = %q, want %q", got, want)
 	}
 }
+
+func TestFormatPositiveTimezone(t *testing.T) {
+	tm := time.Date(2026, 3, 1, 14, 30, 0, 0, time.FixedZone("IST", 5*3600+1800))
+	e := Entry{
+		Time:    tm,
+		Message: "Afternoon tea",
+	}
+	got := e.Format()
+	want := "01/03/26 14:30 +0530 - Afternoon tea"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
