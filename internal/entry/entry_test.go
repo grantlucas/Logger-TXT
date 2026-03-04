@@ -128,3 +128,20 @@ func TestParseEntryProjectAndMessage(t *testing.T) {
 		t.Errorf("Message = %q, want %q", e.Message, "Deployed v1.3.2")
 	}
 }
+
+func TestParseEntryTypeProjectAndMessage(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - WORK (API) - Reviewed pull request"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Project != "API" {
+		t.Errorf("Project = %q, want %q", e.Project, "API")
+	}
+	if e.Message != "Reviewed pull request" {
+		t.Errorf("Message = %q, want %q", e.Message, "Reviewed pull request")
+	}
+}
