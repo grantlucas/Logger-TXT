@@ -97,6 +97,14 @@ DD/MM/YY HH:MM +ZZZZ - Message text
 - `--file` / `-f` - Log file location (flag, takes precedence over env)
 - Default: `./log.txt` (current working directory)
 
+## Development Workflow
+
+**All code changes MUST use the `/tdd` skill.** When implementing new features,
+fixing bugs, or refactoring code, always invoke the TDD skill to follow the
+red-green-refactor cycle. Write failing tests first, then implement the minimal
+code to pass, then refactor. After tests pass, commit the changes to create a
+checkpoint before moving on to the next step.
+
 ## Development Notes
 
 - Version injected at build time via ldflags (see Makefile)
