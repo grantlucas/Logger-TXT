@@ -208,6 +208,36 @@ func TestParseEntryTypeWithMessageContainsDash(t *testing.T) {
 	}
 }
 
+func TestParseEntryMalformedParens(t *testing.T) {
+	// "(API" without closing paren — should be treated as message, not project
+	line := "22/02/26 10:33 -0500 - (API - Deployed v1.3.2"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "(API - Deployed v1.3.2" {
+		t.Errorf("Message = %q, want %q", e.Message, "(API - Deployed v1.3.2")
+	}
+}
+
+func TestParseEntryEmptyCategoryBeforeDash(t *testing.T) {
+	// " - " immediately after timestamp separator — empty prefix is not a valid category
+	line := "22/02/26 10:33 -0500 -  - actual message"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Message != " - actual message" {
+		t.Errorf("Message = %q, want %q", e.Message, " - actual message")
+	}
+}
+
 func TestParseEntryErrors(t *testing.T) {
 	tests := []struct {
 		name string
