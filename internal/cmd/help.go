@@ -78,6 +78,21 @@ const searchExample = `  # Find all entries mentioning "deploy"
   # Return up to 20 matches
   logger-txt search -c 20 bug`
 
+const deleteLong = `Remove the last entry from the log file.
+
+The entry is shown and you are asked to confirm before it is deleted. You must
+type an uppercase "Y" to confirm — any other input cancels the operation.
+Use --yes (-y) to skip the prompt for scripting.
+
+This command only removes the last line of the log file. To delete an
+older entry, edit the file directly.`
+
+const deleteExample = `  # Delete with interactive confirmation
+  logger-txt delete
+
+  # Skip confirmation (for scripts)
+  logger-txt delete --yes`
+
 const subcommandHelpTemplate = `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
 
 {{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`

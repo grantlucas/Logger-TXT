@@ -50,3 +50,11 @@ func TestSearchHelp(t *testing.T) {
 		"logger-txt search",
 	})
 }
+
+func TestDeleteHelp(t *testing.T) {
+	assertHelpContains(t, []string{"delete", "--help"}, []string{
+		"uppercase",
+		"only removes the last line",
+		"logger-txt delete",
+	})
+}

@@ -12,9 +12,10 @@ import (
 
 func newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Delete the last log entry",
-		Long:  "Remove the last entry from the log file. Shows the entry and asks for confirmation before deleting.",
+		Use:     "delete",
+		Short:   "Delete the last log entry",
+		Long:    deleteLong,
+		Example: deleteExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			yes, _ := cmd.Flags().GetBool("yes")
 			path := config.ResolveFilePath(filePath)
