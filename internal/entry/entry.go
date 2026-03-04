@@ -1,7 +1,11 @@
 // Package entry defines the log entry type and handles formatting and parsing.
 package entry
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // Entry represents a single log entry.
 type Entry struct {
@@ -23,4 +27,31 @@ func (e Entry) Format() string {
 	}
 	s += e.Message
 	return s
+}
+
+const timeLayout = "02/01/06 15:04 -0700"
+
+// ParseEntry parses a log line into an Entry.
+func ParseEntry(line string) (Entry, error) {
+	// Timestamp is fixed-width: "DD/MM/YY HH:MM +ZZZZ" = 20 chars
+	if len(line) < 20 {
+		return Entry{}, fmt.Errorf("line too short: %q", line)
+	}
+
+	t, err := time.Parse(timeLayout, line[:20])
+	if err != nil {
+		return Entry{}, fmt.Errorf("invalid timestamp: %w", err)
+	}
+
+	// After timestamp, expect " - " separator
+	rest := line[20:]
+	if !strings.HasPrefix(rest, " - ") {
+		return Entry{}, fmt.Errorf("missing separator after timestamp: %q", line)
+	}
+	rest = rest[3:] // skip " - "
+
+	return Entry{
+		Time:    t,
+		Message: rest,
+	}, nil
 }

@@ -73,3 +73,24 @@ func TestFormatPositiveTimezone(t *testing.T) {
 		t.Errorf("Format() = %q, want %q", got, want)
 	}
 }
+
+func TestParseEntryMessageOnly(t *testing.T) {
+	line := "22/02/26 09:15 -0500 - Grabbed a coffee"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	wantTime := time.Date(2026, 2, 22, 9, 15, 0, 0, time.FixedZone("", -5*3600))
+	if !e.Time.Equal(wantTime) {
+		t.Errorf("Time = %v, want %v", e.Time, wantTime)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "Grabbed a coffee" {
+		t.Errorf("Message = %q, want %q", e.Message, "Grabbed a coffee")
+	}
+}
