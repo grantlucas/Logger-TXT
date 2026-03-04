@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/grantlucas/Logger-TXT/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -12,10 +13,9 @@ func NewRootCmd() *cobra.Command {
 		Short: "A simple command-line logging tool",
 		Long:  "Logger-TXT is a simple command-line logging tool that allows you to log activities throughout the day to a portable text file with timestamps.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Default action: run show
-			showCmd := newShowCmd()
-			showCmd.SetArgs(args)
-			return showCmd.Execute()
+			// Default action: run show with default count
+			path := config.ResolveFilePath(filePath)
+			return runShow(cmd.OutOrStdout(), path, 10)
 		},
 	}
 

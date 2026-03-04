@@ -2,11 +2,25 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/grantlucas/Logger-TXT/internal/config"
 	"github.com/grantlucas/Logger-TXT/internal/logger"
 	"github.com/spf13/cobra"
 )
+
+func runShow(out io.Writer, path string, count int) error {
+	lines, err := logger.Tail(path, count)
+	if err != nil {
+		return err
+	}
+
+	for _, line := range lines {
+		fmt.Fprintln(out, line)
+	}
+
+	return nil
+}
 
 func newShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -16,17 +30,7 @@ func newShowCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			count, _ := cmd.Flags().GetInt("count")
 			path := config.ResolveFilePath(filePath)
-
-			lines, err := logger.Tail(path, count)
-			if err != nil {
-				return err
-			}
-
-			for _, line := range lines {
-				fmt.Fprintln(cmd.OutOrStdout(), line)
-			}
-
-			return nil
+			return runShow(cmd.OutOrStdout(), path, count)
 		},
 	}
 
