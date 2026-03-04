@@ -352,3 +352,74 @@ func TestSearch_ErrorOnNonExistentFile(t *testing.T) {
 		t.Fatal("Search() expected error for non-existent file, got nil")
 	}
 }
+
+func TestDeleteLast_RemovesAndReturnsLastLine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"line1", "line2", "line3"})
+
+	got, err := logger.DeleteLast(path)
+	if err != nil {
+		t.Fatalf("DeleteLast() error = %v", err)
+	}
+	if got != "line3" {
+		t.Errorf("DeleteLast() = %q, want %q", got, "line3")
+	}
+
+	// Verify remaining file content
+	remaining, _ := os.ReadFile(path)
+	want := "line1\nline2\n"
+	if string(remaining) != want {
+		t.Errorf("remaining file = %q, want %q", remaining, want)
+	}
+}
+
+func TestDeleteLast_SingleLineFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"only line"})
+
+	got, err := logger.DeleteLast(path)
+	if err != nil {
+		t.Fatalf("DeleteLast() error = %v", err)
+	}
+	if got != "only line" {
+		t.Errorf("DeleteLast() = %q, want %q", got, "only line")
+	}
+
+	remaining, _ := os.ReadFile(path)
+	if string(remaining) != "" {
+		t.Errorf("remaining file = %q, want empty", remaining)
+	}
+}
+
+func TestDeleteLast_ErrorOnEmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	os.WriteFile(path, []byte{}, 0644)
+
+	_, err := logger.DeleteLast(path)
+	if err == nil {
+		t.Fatal("DeleteLast() expected error for empty file, got nil")
+	}
+}
+
+func TestDeleteLast_ErrorOnWriteFailure(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"line1", "line2"})
+	// Make file read-only so WriteFile fails
+	os.Chmod(path, 0444)
+
+	_, err := logger.DeleteLast(path)
+	if err == nil {
+		t.Fatal("DeleteLast() expected error for read-only file, got nil")
+	}
+}
+
+func TestDeleteLast_ErrorOnNonExistentFile(t *testing.T) {
+	_, err := logger.DeleteLast("/nonexistent/log.txt")
+	if err == nil {
+		t.Fatal("DeleteLast() expected error for non-existent file, got nil")
+	}
+}

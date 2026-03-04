@@ -3,6 +3,7 @@ package logger
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,4 +94,34 @@ func Search(path string, term string, caseSensitive bool, limit int) ([]string, 
 		matches = matches[len(matches)-limit:]
 	}
 	return matches, nil
+}
+
+// DeleteLast removes the last line from the file and returns it.
+func DeleteLast(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	content := strings.TrimRight(string(data), "\r\n")
+	if content == "" {
+		return "", fmt.Errorf("file is empty")
+	}
+
+	idx := strings.LastIndex(content, "\n")
+	var deleted string
+	var remaining string
+	if idx < 0 {
+		// Only one line in the file
+		deleted = content
+		remaining = ""
+	} else {
+		deleted = content[idx+1:]
+		remaining = content[:idx+1]
+	}
+
+	if err := os.WriteFile(path, []byte(remaining), 0644); err != nil {
+		return "", err
+	}
+	return deleted, nil
 }
