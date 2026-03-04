@@ -146,6 +146,40 @@ func TestParseEntryTypeProjectAndMessage(t *testing.T) {
 	}
 }
 
+func TestFormatParseRoundTrip(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 33, 0, 0, time.FixedZone("EST", -5*3600))
+	tests := []struct {
+		name    string
+		entry   Entry
+	}{
+		{"message only", Entry{Time: tm, Message: "Grabbed a coffee"}},
+		{"type + message", Entry{Time: tm, Type: "WORK", Message: "Fixed login bug"}},
+		{"project + message", Entry{Time: tm, Project: "API", Message: "Deployed v1.3.2"}},
+		{"type + project + message", Entry{Time: tm, Type: "WORK", Project: "API", Message: "Reviewed pull request"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			line := tt.entry.Format()
+			parsed, err := ParseEntry(line)
+			if err != nil {
+				t.Fatalf("ParseEntry(%q) error = %v", line, err)
+			}
+			if !parsed.Time.Equal(tt.entry.Time) {
+				t.Errorf("Time = %v, want %v", parsed.Time, tt.entry.Time)
+			}
+			if parsed.Type != tt.entry.Type {
+				t.Errorf("Type = %q, want %q", parsed.Type, tt.entry.Type)
+			}
+			if parsed.Project != tt.entry.Project {
+				t.Errorf("Project = %q, want %q", parsed.Project, tt.entry.Project)
+			}
+			if parsed.Message != tt.entry.Message {
+				t.Errorf("Message = %q, want %q", parsed.Message, tt.entry.Message)
+			}
+		})
+	}
+}
+
 func TestParseEntryErrors(t *testing.T) {
 	tests := []struct {
 		name string
