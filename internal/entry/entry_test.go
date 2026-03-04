@@ -31,3 +31,17 @@ func TestFormatTypeAndMessage(t *testing.T) {
 		t.Errorf("Format() = %q, want %q", got, want)
 	}
 }
+
+func TestFormatProjectAndMessage(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 32, 0, 0, time.FixedZone("EST", -5*3600))
+	e := Entry{
+		Time:    tm,
+		Project: "API",
+		Message: "Deployed v1.3.2",
+	}
+	got := e.Format()
+	want := "22/02/26 10:32 -0500 - (API) - Deployed v1.3.2"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
