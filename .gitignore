@@ -1,2 +1,4 @@
 log.txt
 settings.local.json
+build/
+coverage.out
