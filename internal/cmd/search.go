@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/grantlucas/Logger-TXT/internal/config"
+	"github.com/grantlucas/Logger-TXT/internal/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +15,19 @@ func newSearchCmd() *cobra.Command {
 		Long:  "Search for entries matching the given term. Case-insensitive by default.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: implement in Phase 5
+			caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")
+			count, _ := cmd.Flags().GetInt("count")
+			path := config.ResolveFilePath(filePath)
+
+			lines, err := logger.Search(path, args[0], caseSensitive, count)
+			if err != nil {
+				return err
+			}
+
+			for _, line := range lines {
+				fmt.Fprintln(cmd.OutOrStdout(), line)
+			}
+
 			return nil
 		},
 	}
