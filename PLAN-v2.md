@@ -95,7 +95,7 @@ Logger-TXT/
 - **`logger/` package**: Pure logic layer. Takes an `io.Writer`/`io.Reader` or file path. No cobra dependency. Fully unit-testable.
 - **`entry/` package**: Handles formatting a log entry string and parsing one from a line. This is where the `DD/MM/YY HH:MM +ZZZZ - TYPE (PROJECT) - Message` format lives.
 - **`cmd/` package**: Thin cobra command wrappers that call into `logger/`. Only responsible for flag parsing and calling the right function.
-- **`config/` package**: Resolves the effective config from env vars, flags, and defaults. Precedence: flag > env var > default.
+- **`config/` package**: Resolves the effective config from env vars, flags, and defaults. Precedence: flag > local `./log.txt` (if exists) > env var > default.
 
 ---
 
@@ -138,7 +138,7 @@ That's it. No logging library, no config library. Keep it minimal.
 - Unit tests using `t.TempDir()` for isolated file operations
 
 ### Phase 4: Config Resolution (`internal/config/`)
-- Resolve log file path: `--file` flag > `LOGGERTXT_PATH` env > `./log.txt` (current working directory)
+- Resolve log file path: `--file` flag > `./log.txt` (if it exists in cwd) > `LOGGERTXT_PATH` env > `./log.txt` (default)
 - Unit tests for precedence behavior
 
 ### Phase 5: CLI Commands (`internal/cmd/`)
@@ -390,7 +390,7 @@ logger-txt -h                         →  logger-txt --help     (or: logger-txt
 - **Entry formatting**: Every combination of type/project/message
 - **Entry parsing**: Valid lines, malformed lines, edge cases
 - **Logger operations**: Append, tail, search, delete — all using `t.TempDir()`
-- **Config resolution**: `--file` flag > `LOGGERTXT_PATH` env > `./log.txt`
+- **Config resolution**: `--file` flag > `./log.txt` (if exists in cwd) > `LOGGERTXT_PATH` env > `./log.txt` default
 - **Table-driven tests** throughout
 
 ### Integration Tests

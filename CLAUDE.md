@@ -71,6 +71,7 @@ make install
 - **`internal/logger`** - Pure file operations: `Append`, `Tail`, `Search`,
   `DeleteLast`, `EnsureFile`. No cobra dependency. Uses `io.Writer`/file paths.
 - **`internal/config`** - Resolves log file path. Precedence: `--file` flag >
+  `./log.txt` (if exists in cwd) >
   `LOGGERTXT_PATH` env > `./log.txt`
 - **`internal/cmd`** - Thin cobra wrappers that parse flags and call into
   `logger`/`entry`
@@ -93,9 +94,10 @@ DD/MM/YY HH:MM +ZZZZ - Message text
 
 ### Environment Configuration
 
-- `LOGGERTXT_PATH` - Log file location (env var)
-- `--file` / `-f` - Log file location (flag, takes precedence over env)
-- Default: `./log.txt` (current working directory)
+- `--file` / `-f` - Log file location (flag, highest precedence)
+- `./log.txt` - Used automatically if it already exists in the current directory
+- `LOGGERTXT_PATH` - Log file location (env var, used when no local file exists)
+- Default: `./log.txt` (current working directory, lowest precedence)
 
 ## Development Workflow
 
