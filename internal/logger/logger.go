@@ -33,8 +33,10 @@ func Append(path string, e entry.Entry) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	_, err = f.WriteString(e.Format() + "\n")
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
 	return err
 }
 
@@ -44,7 +46,7 @@ func Tail(path string, n int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
@@ -68,7 +70,7 @@ func Search(path string, term string, caseSensitive bool, limit int) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if !caseSensitive {
 		term = strings.ToLower(term)

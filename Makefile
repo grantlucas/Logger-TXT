@@ -18,7 +18,7 @@ vet:
 	go vet ./...
 
 lint: vet
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run
 
 coverage:
 	go test -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./internal/...
