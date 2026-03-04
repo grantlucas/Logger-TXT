@@ -28,7 +28,9 @@ func TestEnsureFile_PreservesExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
 	want := "existing content\n"
-	os.WriteFile(path, []byte(want), 0644)
+	if err := os.WriteFile(path, []byte(want), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := logger.EnsureFile(path)
 	if err != nil {
@@ -54,7 +56,9 @@ func TestEnsureFile_ErrorOnUnwritablePath(t *testing.T) {
 func TestEnsureFile_ErrorOnReadOnlyDirectory(t *testing.T) {
 	dir := t.TempDir()
 	readOnly := filepath.Join(dir, "readonly")
-	os.Mkdir(readOnly, 0555)
+	if err := os.Mkdir(readOnly, 0555); err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(readOnly, "log.txt")
 
 	err := logger.EnsureFile(path)
@@ -104,8 +108,12 @@ func TestAppend_AppendsToExistingFile(t *testing.T) {
 	e1 := entry.Entry{Time: testTime(), Message: "First entry"}
 	e2 := entry.Entry{Time: testTime(), Type: "WORK", Message: "Second entry"}
 
-	logger.Append(path, e1)
-	logger.Append(path, e2)
+	if err := logger.Append(path, e1); err != nil {
+		t.Fatal(err)
+	}
+	if err := logger.Append(path, e2); err != nil {
+		t.Fatal(err)
+	}
 
 	got, _ := os.ReadFile(path)
 	want := "22/02/26 10:30 -0500 - First entry\n22/02/26 10:30 -0500 - WORK - Second entry\n"
@@ -124,7 +132,9 @@ func TestAppend_ErrorOnUnwritablePath(t *testing.T) {
 func TestAppend_ErrorOnReadOnlyDirectory(t *testing.T) {
 	dir := t.TempDir()
 	readOnly := filepath.Join(dir, "readonly")
-	os.Mkdir(readOnly, 0555)
+	if err := os.Mkdir(readOnly, 0555); err != nil {
+		t.Fatal(err)
+	}
 
 	err := logger.Append(filepath.Join(readOnly, "log.txt"), entry.Entry{Message: "test"})
 	if err == nil {
@@ -186,7 +196,9 @@ func TestTail_ReturnsAllLinesWhenFewerThanN(t *testing.T) {
 func TestTail_EmptyFileReturnsEmptySlice(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
-	os.WriteFile(path, []byte{}, 0644)
+	if err := os.WriteFile(path, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := logger.Tail(path, 10)
 	if err != nil {
@@ -201,7 +213,9 @@ func TestTail_EmptyFileReturnsEmptySlice(t *testing.T) {
 func TestTail_HandlesWindowsLineEndings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
-	os.WriteFile(path, []byte("line1\r\nline2\r\nline3\r\n"), 0644)
+	if err := os.WriteFile(path, []byte("line1\r\nline2\r\nline3\r\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := logger.Tail(path, 2)
 	if err != nil {
@@ -228,7 +242,9 @@ func TestTail_ErrorOnScannerFailure(t *testing.T) {
 	for i := range longLine {
 		longLine[i] = 'x'
 	}
-	os.WriteFile(path, longLine, 0644)
+	if err := os.WriteFile(path, longLine, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := logger.Tail(path, 10)
 	if err == nil {
@@ -338,7 +354,9 @@ func TestSearch_ErrorOnScannerFailure(t *testing.T) {
 	for i := range longLine {
 		longLine[i] = 'x'
 	}
-	os.WriteFile(path, longLine, 0644)
+	if err := os.WriteFile(path, longLine, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := logger.Search(path, "x", false, 10)
 	if err == nil {
@@ -396,7 +414,9 @@ func TestDeleteLast_SingleLineFile(t *testing.T) {
 func TestDeleteLast_ErrorOnEmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
-	os.WriteFile(path, []byte{}, 0644)
+	if err := os.WriteFile(path, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := logger.DeleteLast(path)
 	if err == nil {
@@ -409,7 +429,9 @@ func TestDeleteLast_ErrorOnWriteFailure(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"line1", "line2"})
 	// Make file read-only so WriteFile fails
-	os.Chmod(path, 0444)
+	if err := os.Chmod(path, 0444); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := logger.DeleteLast(path)
 	if err == nil {

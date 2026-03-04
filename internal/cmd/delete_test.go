@@ -124,7 +124,7 @@ func TestDeleteCmd_DeleteLastError(t *testing.T) {
 	if err := os.Chmod(logFile, 0444); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.Chmod(logFile, 0644) })
+	t.Cleanup(func() { _ = os.Chmod(logFile, 0644) })
 
 	_, _, err := executeCmd(t, "--file", logFile, "delete", "--yes")
 	if err == nil {
