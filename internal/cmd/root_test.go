@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"testing"
 )
 
@@ -34,6 +35,21 @@ func TestRootCmd_FileFlagPropagates(t *testing.T) {
 
 	if out != "03/03/26 09:00 -0500 - Entry\n" {
 		t.Errorf("expected entry output, got: %q", out)
+	}
+}
+
+func TestExecute(t *testing.T) {
+	// Execute() is the public entry point used by main.go
+	// With no args and no log file, it should return an error (file not found)
+	// but we just need to exercise the function.
+	// Save and restore os.Args since Execute creates a fresh root command.
+	oldArgs := os.Args
+	os.Args = []string{"logger-txt", "--help"}
+	defer func() { os.Args = oldArgs }()
+
+	err := Execute()
+	if err != nil {
+		t.Fatalf("unexpected error from Execute: %v", err)
 	}
 }
 

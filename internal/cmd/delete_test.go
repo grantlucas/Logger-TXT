@@ -115,6 +115,22 @@ func TestDeleteCmd_EmptyFile(t *testing.T) {
 	}
 }
 
+func TestDeleteCmd_DeleteLastError(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir, "03/03/26 09:00 -0500 - Entry\n")
+
+	// Make file read-only so DeleteLast (which writes) fails
+	if err := os.Chmod(logFile, 0444); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(logFile, 0644) })
+
+	_, _, err := executeCmd(t, "--file", logFile, "delete", "--yes")
+	if err == nil {
+		t.Fatal("expected error when file is read-only")
+	}
+}
+
 func TestDeleteCmd_FileNotFound(t *testing.T) {
 	_, _, err := executeCmd(t, "--file", "/nonexistent/path/log.txt", "delete", "--yes")
 	if err == nil {

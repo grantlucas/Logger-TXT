@@ -108,6 +108,14 @@ func TestAddCmd_AppendsToExisting(t *testing.T) {
 	}
 }
 
+func TestAddCmd_AppendError(t *testing.T) {
+	// Point to a path inside a non-existent read-only location
+	_, _, err := executeCmd(t, "--file", "/dev/null/impossible/log.txt", "add", "test")
+	if err == nil {
+		t.Fatal("expected error when append fails")
+	}
+}
+
 func TestAddCmd_SimpleMessage(t *testing.T) {
 	dir := t.TempDir()
 	logFile := writeLogFile(t, dir, "")
