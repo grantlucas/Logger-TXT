@@ -50,8 +50,69 @@ func ParseEntry(line string) (Entry, error) {
 	}
 	rest = rest[3:] // skip " - "
 
+	var entryType, project, message string
+
+	// Try to parse category prefix before the message.
+	// Possible patterns:
+	//   "TYPE (PROJECT) - message"
+	//   "TYPE - message"
+	//   "(PROJECT) - message"
+	//   "message"
+	if idx := strings.Index(rest, " - "); idx >= 0 {
+		prefix := rest[:idx]
+		after := rest[idx+3:]
+
+		if parseCategory(prefix, &entryType, &project) {
+			message = after
+		} else {
+			// No valid category — entire rest is the message
+			message = rest
+		}
+	} else {
+		message = rest
+	}
+
 	return Entry{
 		Time:    t,
-		Message: rest,
+		Type:    entryType,
+		Project: project,
+		Message: message,
 	}, nil
+}
+
+// parseCategory attempts to parse a category prefix like "TYPE", "(PROJECT)",
+// or "TYPE (PROJECT)". Returns true if the prefix is a valid category.
+func parseCategory(prefix string, entryType, project *string) bool {
+	// "TYPE (PROJECT)"
+	if parenOpen := strings.Index(prefix, "("); parenOpen >= 0 {
+		if !strings.HasSuffix(prefix, ")") {
+			return false
+		}
+		*project = prefix[parenOpen+1 : len(prefix)-1]
+		if parenOpen > 0 {
+			*entryType = strings.TrimSpace(prefix[:parenOpen])
+		}
+		return true
+	}
+
+	// "TYPE" — must be all uppercase letters (no spaces, no parens)
+	if isTypeName(prefix) {
+		*entryType = prefix
+		return true
+	}
+
+	return false
+}
+
+// isTypeName returns true if s looks like a TYPE token (uppercase letters only).
+func isTypeName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return true
 }

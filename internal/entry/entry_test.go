@@ -94,3 +94,20 @@ func TestParseEntryMessageOnly(t *testing.T) {
 		t.Errorf("Message = %q, want %q", e.Message, "Grabbed a coffee")
 	}
 }
+
+func TestParseEntryTypeAndMessage(t *testing.T) {
+	line := "22/02/26 10:31 -0500 - WORK - Fixed login bug"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "Fixed login bug" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed login bug")
+	}
+}
