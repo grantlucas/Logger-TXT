@@ -79,6 +79,24 @@ func TestShowCmd_EmptyFile(t *testing.T) {
 	}
 }
 
+func TestShowCmd_PathWithSpaces(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "path with spaces")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	logFile := writeLogFile(t, dir, "03/03/26 09:00 -0500 - WORK - Spaced path entry\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Spaced path entry\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
 func TestShowCmd_FileNotFound(t *testing.T) {
 	_, _, err := executeCmd(t, "--file", "/nonexistent/path/log.txt", "show")
 	if err == nil {

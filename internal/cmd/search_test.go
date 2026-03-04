@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -68,6 +70,25 @@ func TestSearchCmd_NoMatches(t *testing.T) {
 
 	if out != "" {
 		t.Errorf("expected no output for no matches, got: %q", out)
+	}
+}
+
+func TestSearchCmd_PathWithSpaces(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "path with spaces")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	logFile := writeLogFile(t, dir, "03/03/26 09:00 -0500 - WORK - Spaced path entry\n"+
+		"03/03/26 09:30 -0500 - Coffee break\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "work")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Spaced path entry\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
 	}
 }
 

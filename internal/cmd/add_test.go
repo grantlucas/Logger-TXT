@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -113,6 +114,28 @@ func TestAddCmd_AppendError(t *testing.T) {
 	_, _, err := executeCmd(t, "--file", "/dev/null/impossible/log.txt", "add", "test")
 	if err == nil {
 		t.Fatal("expected error when append fails")
+	}
+}
+
+func TestAddCmd_PathWithSpaces(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "path with spaces")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	logFile := writeLogFile(t, dir, "")
+
+	out, _, err := executeCmd(t, "--file", logFile, "add", "-t", "work", "Spaced path entry")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, `"Spaced path entry" logged under the type WORK`) {
+		t.Errorf("expected confirmation, got: %q", out)
+	}
+
+	data, _ := os.ReadFile(logFile)
+	if !strings.Contains(string(data), " - WORK - Spaced path entry") {
+		t.Errorf("expected entry in file, got: %q", string(data))
 	}
 }
 
