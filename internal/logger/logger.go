@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/grantlucas/Logger-TXT/internal/entry"
 )
@@ -57,4 +58,39 @@ func Tail(path string, n int) ([]string, error) {
 		lines = lines[len(lines)-n:]
 	}
 	return lines, nil
+}
+
+// Search returns the last limit lines that contain the search term.
+// When caseSensitive is false, comparison is case-insensitive.
+func Search(path string, term string, caseSensitive bool, limit int) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	if !caseSensitive {
+		term = strings.ToLower(term)
+	}
+
+	var matches []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		haystack := line
+		if !caseSensitive {
+			haystack = strings.ToLower(line)
+		}
+		if strings.Contains(haystack, term) {
+			matches = append(matches, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(matches) > limit {
+		matches = matches[len(matches)-limit:]
+	}
+	return matches, nil
 }

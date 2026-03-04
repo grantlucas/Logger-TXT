@@ -242,3 +242,113 @@ func TestTail_ErrorOnNonExistentFile(t *testing.T) {
 		t.Fatal("Tail() expected error for non-existent file, got nil")
 	}
 }
+
+func TestSearch_CaseInsensitive(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:30 -0500 - WORK - Fixed bug",
+		"22/02/26 10:31 -0500 - Grabbed coffee",
+		"22/02/26 10:32 -0500 - WORK (API) - Deployed",
+	})
+
+	got, err := logger.Search(path, "work", false, 10)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Search() returned %d results, want 2", len(got))
+	}
+	if got[0] != "22/02/26 10:30 -0500 - WORK - Fixed bug" {
+		t.Errorf("Search()[0] = %q", got[0])
+	}
+	if got[1] != "22/02/26 10:32 -0500 - WORK (API) - Deployed" {
+		t.Errorf("Search()[1] = %q", got[1])
+	}
+}
+
+func TestSearch_CaseSensitive(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:30 -0500 - WORK - Fixed bug",
+		"22/02/26 10:31 -0500 - work - lowercase",
+		"22/02/26 10:32 -0500 - Grabbed coffee",
+	})
+
+	got, err := logger.Search(path, "WORK", true, 10)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("Search() returned %d results, want 1", len(got))
+	}
+	if got[0] != "22/02/26 10:30 -0500 - WORK - Fixed bug" {
+		t.Errorf("Search()[0] = %q", got[0])
+	}
+}
+
+func TestSearch_LimitsResults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:30 -0500 - WORK - First",
+		"22/02/26 10:31 -0500 - WORK - Second",
+		"22/02/26 10:32 -0500 - WORK - Third",
+	})
+
+	got, err := logger.Search(path, "WORK", false, 2)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Search() returned %d results, want 2", len(got))
+	}
+	// Should return the last 2 matches
+	if got[0] != "22/02/26 10:31 -0500 - WORK - Second" {
+		t.Errorf("Search()[0] = %q", got[0])
+	}
+	if got[1] != "22/02/26 10:32 -0500 - WORK - Third" {
+		t.Errorf("Search()[1] = %q", got[1])
+	}
+}
+
+func TestSearch_NoMatchesReturnsEmptySlice(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{"22/02/26 10:30 -0500 - Grabbed coffee"})
+
+	got, err := logger.Search(path, "NONEXISTENT", false, 10)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("Search() returned %d results, want 0", len(got))
+	}
+}
+
+func TestSearch_ErrorOnScannerFailure(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	longLine := make([]byte, 1024*1024)
+	for i := range longLine {
+		longLine[i] = 'x'
+	}
+	os.WriteFile(path, longLine, 0644)
+
+	_, err := logger.Search(path, "x", false, 10)
+	if err == nil {
+		t.Fatal("Search() expected error for oversized line, got nil")
+	}
+}
+
+func TestSearch_ErrorOnNonExistentFile(t *testing.T) {
+	_, err := logger.Search("/nonexistent/log.txt", "term", false, 10)
+	if err == nil {
+		t.Fatal("Search() expected error for non-existent file, got nil")
+	}
+}
