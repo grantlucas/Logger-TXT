@@ -24,6 +24,31 @@ const rootExample = `  # Add a simple entry
   # Delete the last entry (with confirmation)
   logger-txt delete`
 
+const addLong = `Add a new timestamped entry to the log file.
+
+The -t (type) and -p (project) flags are automatically uppercased, so
+"-t meeting" becomes "MEETING" in the log. The message is logged as-is.`
+
+const addExample = `  # Simple message
+  logger-txt add Had coffee with the team
+  # => 04/03/26 14:30 -0500 - Had coffee with the team
+
+  # With a type
+  logger-txt add -t meeting Standup with the team
+  # => 04/03/26 14:30 -0500 - MEETING - Standup with the team
+
+  # With a project
+  logger-txt add -p acme Deployed v2.1
+  # => 04/03/26 14:30 -0500 - (ACME) - Deployed v2.1
+
+  # With both type and project
+  logger-txt add -t dev -p acme Fixed login bug
+  # => 04/03/26 14:30 -0500 - DEV (ACME) - Fixed login bug`
+
+const subcommandHelpTemplate = `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
+
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
+
 const rootHelpTemplate = `{{.Long}}
 
 Log entry format:

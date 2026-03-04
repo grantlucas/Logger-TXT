@@ -23,11 +23,17 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.SetHelpTemplate(rootHelpTemplate)
 	rootCmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "path to log file")
 
-	rootCmd.AddCommand(newAddCmd())
-	rootCmd.AddCommand(newShowCmd())
-	rootCmd.AddCommand(newSearchCmd())
-	rootCmd.AddCommand(newDeleteCmd())
-	rootCmd.AddCommand(newVersionCmd())
+	subCmds := []*cobra.Command{
+		newAddCmd(),
+		newShowCmd(),
+		newSearchCmd(),
+		newDeleteCmd(),
+		newVersionCmd(),
+	}
+	for _, sub := range subCmds {
+		sub.SetHelpTemplate(subcommandHelpTemplate)
+		rootCmd.AddCommand(sub)
+	}
 
 	return rootCmd
 }
