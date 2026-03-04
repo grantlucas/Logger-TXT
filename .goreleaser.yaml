@@ -1,0 +1,59 @@
+version: 2
+
+project_name: logger-txt
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/logger-txt/
+    binary: logger-txt
+    ldflags:
+      - -s -w
+      - -X github.com/grantlucas/Logger-TXT/internal/cmd.version={{.Version}}
+      - -X github.com/grantlucas/Logger-TXT/internal/cmd.date={{ time "02/01/2006" }}
+
+archives:
+  - name_template: >-
+      {{- .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end -}}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+
+brews:
+  - name: logger-txt
+    repository:
+      owner: grantlucas
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/grantlucas/Logger-TXT"
+    description: "A simple command-line logging tool for daily activity tracking"
+    license: "GPL-3.0-or-later"
+    install: |
+      bin.install "logger-txt"
+    test: |
+      system bin/"logger-txt", "version"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"

@@ -1,0 +1,259 @@
+package entry
+
+import (
+	"testing"
+	"time"
+)
+
+func TestFormatMessageOnly(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 9, 15, 0, 0, time.FixedZone("EST", -5*3600))
+	e := Entry{
+		Time:    tm,
+		Message: "Grabbed a coffee",
+	}
+	got := e.Format()
+	want := "22/02/26 09:15 -0500 - Grabbed a coffee"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatTypeAndMessage(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 31, 0, 0, time.FixedZone("EST", -5*3600))
+	e := Entry{
+		Time:    tm,
+		Type:    "WORK",
+		Message: "Fixed login bug",
+	}
+	got := e.Format()
+	want := "22/02/26 10:31 -0500 - WORK - Fixed login bug"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatProjectAndMessage(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 32, 0, 0, time.FixedZone("EST", -5*3600))
+	e := Entry{
+		Time:    tm,
+		Project: "API",
+		Message: "Deployed v1.3.2",
+	}
+	got := e.Format()
+	want := "22/02/26 10:32 -0500 - (API) - Deployed v1.3.2"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatTypeProjectAndMessage(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 33, 0, 0, time.FixedZone("EST", -5*3600))
+	e := Entry{
+		Time:    tm,
+		Type:    "WORK",
+		Project: "API",
+		Message: "Reviewed pull request",
+	}
+	got := e.Format()
+	want := "22/02/26 10:33 -0500 - WORK (API) - Reviewed pull request"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatPositiveTimezone(t *testing.T) {
+	tm := time.Date(2026, 3, 1, 14, 30, 0, 0, time.FixedZone("IST", 5*3600+1800))
+	e := Entry{
+		Time:    tm,
+		Message: "Afternoon tea",
+	}
+	got := e.Format()
+	want := "01/03/26 14:30 +0530 - Afternoon tea"
+	if got != want {
+		t.Errorf("Format() = %q, want %q", got, want)
+	}
+}
+
+func TestParseEntryMessageOnly(t *testing.T) {
+	line := "22/02/26 09:15 -0500 - Grabbed a coffee"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	wantTime := time.Date(2026, 2, 22, 9, 15, 0, 0, time.FixedZone("", -5*3600))
+	if !e.Time.Equal(wantTime) {
+		t.Errorf("Time = %v, want %v", e.Time, wantTime)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "Grabbed a coffee" {
+		t.Errorf("Message = %q, want %q", e.Message, "Grabbed a coffee")
+	}
+}
+
+func TestParseEntryTypeAndMessage(t *testing.T) {
+	line := "22/02/26 10:31 -0500 - WORK - Fixed login bug"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "Fixed login bug" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed login bug")
+	}
+}
+
+func TestParseEntryProjectAndMessage(t *testing.T) {
+	line := "22/02/26 10:32 -0500 - (API) - Deployed v1.3.2"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Project != "API" {
+		t.Errorf("Project = %q, want %q", e.Project, "API")
+	}
+	if e.Message != "Deployed v1.3.2" {
+		t.Errorf("Message = %q, want %q", e.Message, "Deployed v1.3.2")
+	}
+}
+
+func TestParseEntryTypeProjectAndMessage(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - WORK (API) - Reviewed pull request"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Project != "API" {
+		t.Errorf("Project = %q, want %q", e.Project, "API")
+	}
+	if e.Message != "Reviewed pull request" {
+		t.Errorf("Message = %q, want %q", e.Message, "Reviewed pull request")
+	}
+}
+
+func TestFormatParseRoundTrip(t *testing.T) {
+	tm := time.Date(2026, 2, 22, 10, 33, 0, 0, time.FixedZone("EST", -5*3600))
+	tests := []struct {
+		name    string
+		entry   Entry
+	}{
+		{"message only", Entry{Time: tm, Message: "Grabbed a coffee"}},
+		{"type + message", Entry{Time: tm, Type: "WORK", Message: "Fixed login bug"}},
+		{"project + message", Entry{Time: tm, Project: "API", Message: "Deployed v1.3.2"}},
+		{"type + project + message", Entry{Time: tm, Type: "WORK", Project: "API", Message: "Reviewed pull request"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			line := tt.entry.Format()
+			parsed, err := ParseEntry(line)
+			if err != nil {
+				t.Fatalf("ParseEntry(%q) error = %v", line, err)
+			}
+			if !parsed.Time.Equal(tt.entry.Time) {
+				t.Errorf("Time = %v, want %v", parsed.Time, tt.entry.Time)
+			}
+			if parsed.Type != tt.entry.Type {
+				t.Errorf("Type = %q, want %q", parsed.Type, tt.entry.Type)
+			}
+			if parsed.Project != tt.entry.Project {
+				t.Errorf("Project = %q, want %q", parsed.Project, tt.entry.Project)
+			}
+			if parsed.Message != tt.entry.Message {
+				t.Errorf("Message = %q, want %q", parsed.Message, tt.entry.Message)
+			}
+		})
+	}
+}
+
+func TestParseEntryMessageContainsDash(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - Fixed bug - the auth one"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Message != "Fixed bug - the auth one" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed bug - the auth one")
+	}
+}
+
+func TestParseEntryTypeWithMessageContainsDash(t *testing.T) {
+	line := "22/02/26 10:33 -0500 - WORK - Fixed bug - the auth one"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "WORK" {
+		t.Errorf("Type = %q, want %q", e.Type, "WORK")
+	}
+	if e.Message != "Fixed bug - the auth one" {
+		t.Errorf("Message = %q, want %q", e.Message, "Fixed bug - the auth one")
+	}
+}
+
+func TestParseEntryMalformedParens(t *testing.T) {
+	// "(API" without closing paren — should be treated as message, not project
+	line := "22/02/26 10:33 -0500 - (API - Deployed v1.3.2"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Project != "" {
+		t.Errorf("Project = %q, want empty", e.Project)
+	}
+	if e.Message != "(API - Deployed v1.3.2" {
+		t.Errorf("Message = %q, want %q", e.Message, "(API - Deployed v1.3.2")
+	}
+}
+
+func TestParseEntryEmptyCategoryBeforeDash(t *testing.T) {
+	// " - " immediately after timestamp separator — empty prefix is not a valid category
+	line := "22/02/26 10:33 -0500 -  - actual message"
+	e, err := ParseEntry(line)
+	if err != nil {
+		t.Fatalf("ParseEntry() error = %v", err)
+	}
+	if e.Type != "" {
+		t.Errorf("Type = %q, want empty", e.Type)
+	}
+	if e.Message != " - actual message" {
+		t.Errorf("Message = %q, want %q", e.Message, " - actual message")
+	}
+}
+
+func TestParseEntryErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+	}{
+		{"empty string", ""},
+		{"too short", "hello"},
+		{"bad timestamp", "not-a-date-at-all!! - message"},
+		{"missing separator", "22/02/26 10:33 -0500message without separator"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseEntry(tt.line)
+			if err == nil {
+				t.Errorf("ParseEntry(%q) expected error, got nil", tt.line)
+			}
+		})
+	}
+}

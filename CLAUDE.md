@@ -1,69 +1,41 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-Logger-TXT is a simple command-line logging tool written in Bash that allows users to log activities throughout the day to a portable text file with timestamps. The tool supports categorization by type and project, making it easy to track work progress, personal tasks, purchases, or any time-sensitive events.
+Logger-TXT is a CLI tool for logging daily activities to a timestamped text
+file with optional type and project categorization. Written in Go.
 
-## Key Files
+## Key Paths
 
-- `logger-txt` - Main executable Bash script containing all functionality
-- `README.md` - Comprehensive documentation with installation and usage instructions  
-- `LICENSE` - GNU General Public License v3
-- `.github/release.yml` - GitHub release automation configuration
-
-## Commands
-
-Since this is a simple Bash script project, there are no build or test commands. The main script is executed directly:
-
-```bash
-# Make executable (if needed)
-chmod +x logger-txt
-
-# Basic usage examples
-./logger-txt "Simple log entry"
-./logger-txt -t work -p project "Categorized log entry"
-./logger-txt -c 20  # Show last 20 log entries
-./logger-txt -s "search term"  # Search logs
-./logger-txt -x  # Delete last entry (with confirmation)
-```
+- `cmd/logger-txt/main.go` - Entry point
+- `internal/cmd/` - Cobra CLI commands
+- `internal/entry/` - Entry struct, formatting, parsing
+- `internal/logger/` - File operations (append, tail, search, delete)
+- `internal/config/` - Log file path resolution
+- `Makefile` - Build, test, lint, coverage targets
 
 ## Architecture
 
-This is a single-file Bash application with a straightforward structure:
+- All logic in `internal/` - no public Go API
+- Core packages (`entry`, `logger`, `config`) have zero CLI dependencies
+- `internal/cmd/` contains thin Cobra wrappers only
+- Table-driven tests throughout
+- 100% unit test coverage target on `internal/` packages
 
-### Core Functions
-- `usage()` - Shows brief usage syntax
-- `help()` - Displays comprehensive help text
-- `version()` - Shows version and author information
-- `check_log_file()` - Ensures log file exists and is writable
-- `search_log()` / `search_log_sensitive()` - Case-insensitive/sensitive log searching
-- `deleteLast()` / `confirmDeleteLast()` - Remove last log entry with user confirmation
+## Development Workflow
 
-### Script Flow
-1. Set default variables and parse environment (LOGGERTXT_PATH)
-2. Process command-line options using getopts
-3. Execute appropriate action based on options:
-   - Add new log entry with optional type/project categorization
-   - Display recent log entries (default: last 10)
-   - Search existing logs
-   - Delete last entry
+**All code changes MUST use the `/tdd` skill.** Write failing tests first,
+implement minimal code to pass, then refactor. Commit after tests pass to
+checkpoint before moving on.
 
-### Log Format
-Entries are stored in plain text with the format:
-```
-DD/MM/YY HH:MM TZ - [TYPE] [(PROJECT)] - Log message text
-```
+### Essential Commands
 
-### Environment Configuration
-- `LOGGERTXT_PATH` - Optional environment variable to specify log file location
-- Default log location: `~/log.txt` or same directory as script
+- `make test` - Run all tests
+- `make coverage` - Tests + fail if below 100% coverage
 
 ## Development Notes
 
-- The script uses standard Bash features and should be compatible with most Unix-like systems
-- No external dependencies beyond basic Unix tools (grep, tail, sed, mv, date)
-- File operations include proper error checking and permission validation
-- User input validation is minimal - designed for trusted local use
-- The script maintains backward compatibility with existing log files
+- Version injected at build time via ldflags (see Makefile)
+- Cross-platform: use `filepath.Join`, `os.UserHomeDir()`, handle `\r\n`
+- Tests use `t.TempDir()` for isolated file operations
+- CI runs on ubuntu-latest and macos-latest
