@@ -145,3 +145,23 @@ func TestParseEntryTypeProjectAndMessage(t *testing.T) {
 		t.Errorf("Message = %q, want %q", e.Message, "Reviewed pull request")
 	}
 }
+
+func TestParseEntryErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+	}{
+		{"empty string", ""},
+		{"too short", "hello"},
+		{"bad timestamp", "not-a-date-at-all!! - message"},
+		{"missing separator", "22/02/26 10:33 -0500message without separator"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseEntry(tt.line)
+			if err == nil {
+				t.Errorf("ParseEntry(%q) expected error, got nil", tt.line)
+			}
+		})
+	}
+}
