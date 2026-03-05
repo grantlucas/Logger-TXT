@@ -96,6 +96,11 @@ The log file path is resolved in the following order:
 3. `LOGGERTXT_PATH` environment variable
 4. `./log.txt` (default)
 
+## Related Projects
+
+- [Logger TXT for macOS](https://github.com/grantlucas/Logger-TXT-macos) -
+  A native macOS GUI for Logger TXT
+
 ## Main Goals
 
 The main goal of this project is to provide a simple logging tool which can be
