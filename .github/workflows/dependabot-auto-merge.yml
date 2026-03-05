@@ -1,0 +1,127 @@
+name: "Dependabot Auto-Merge"
+
+on:
+  pull_request_review:
+    types:
+      - submitted
+  pull_request:
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: "Enable Auto-Merge for Dependabot PRs"
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: "Dependabot metadata"
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Check PR Approval Status"
+        id: check_approval
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Get PR number from the appropriate event context
+            // For pull_request_review events, use context.issue.number
+            // For pull_request events, use context.payload.pull_request.number
+            const prNumber = context.eventName === 'pull_request_review'
+              ? context.issue.number
+              : context.payload.pull_request.number;
+
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Only consider decisive review states (not COMMENTED or PENDING)
+            const decisiveStates = new Set([
+              'APPROVED',
+              'CHANGES_REQUESTED',
+              'DISMISSED',
+            ]);
+
+            // Build map of latest decisive review per reviewer
+            const latestByReviewer = new Map();
+            for (const review of reviews) {
+              if (!decisiveStates.has(review.state)) continue;
+              const existing = latestByReviewer.get(review.user.id);
+              if (
+                !existing ||
+                new Date(review.submitted_at) > new Date(existing.submitted_at)
+              ) {
+                latestByReviewer.set(review.user.id, review);
+              }
+            }
+
+            // Check if any reviewer's latest decisive review is an approval
+            const hasApproval = [...latestByReviewer.values()].some(
+              (review) => review.state === 'APPROVED'
+            );
+
+            core.setOutput('approved', hasApproval.toString());
+
+            if (hasApproval) {
+              core.info(`PR #${prNumber} has been approved`);
+            } else {
+              core.info(`PR #${prNumber} does not have approval yet`);
+            }
+
+            return hasApproval;
+
+      - name: "Check PR Mergeability"
+        id: check_mergeability
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Get PR number from the appropriate event context
+            const prNumber = context.eventName === 'pull_request_review'
+              ? context.issue.number
+              : context.payload.pull_request.number;
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Check if PR is mergeable
+            const isMergeable = pr.mergeable === true;
+            const mergeableState = pr.mergeable_state;
+
+            core.setOutput('mergeable', isMergeable.toString());
+            core.setOutput('mergeable_state', mergeableState);
+
+            if (!isMergeable) {
+              core.info(
+                `PR #${prNumber} is not mergeable. State: ${mergeableState}. Skipping auto-merge.`
+              );
+            } else {
+              core.info(`PR #${prNumber} is mergeable (state: ${mergeableState})`);
+            }
+
+            return { isMergeable, mergeableState };
+
+      - name: "Log Dependabot metadata"
+        if: steps.check_approval.outputs.approved == 'true' && steps.check_mergeability.outputs.mergeable == 'true'
+        run: |
+          echo "Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
+
+      - name: "Enable Auto-Merge"
+        if: steps.check_approval.outputs.approved == 'true' && steps.check_mergeability.outputs.mergeable == 'true'
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
