@@ -58,6 +58,10 @@ Output goes to stdout with one entry per line, so it works well in a pipe:
   logger-txt show | grep MEETING
   logger-txt show -c 50 | wc -l
 
+Use -t (type) and -p (project) to filter entries. Values are case-insensitive
+and both may be combined (AND logic). The count (-c) applies after filtering,
+so "-t WORK -c 10" returns the last 10 WORK entries.
+
 Use --start and --end to display entries within a date range. Dates use
 DD/MM/YY format; add HH:MM for exact times (quote the value on the CLI).
 Date-only --end values default to 23:59. Both flags must be provided together.
@@ -69,6 +73,15 @@ const showExample = `  # Show the default last 10 entries
 
   # Show the last 25 entries
   logger-txt show -c 25
+
+  # Show only WORK entries
+  logger-txt show -t WORK
+
+  # Show only entries in the API project
+  logger-txt show -p API
+
+  # Show the last 10 WORK entries in the FINANCE project
+  logger-txt show -t WORK -p FINANCE -c 10
 
   # Show all entries from a single day
   logger-txt show --start 14/03/26 --end 14/03/26
@@ -82,6 +95,9 @@ const showExample = `  # Show the default last 10 entries
   # Show the last 5 entries from a date range
   logger-txt show --start 01/03/26 --end 14/03/26 -c 5
 
+  # Show WORK entries within a date range
+  logger-txt show -t WORK --start 01/03/26 --end 14/03/26
+
   # Equivalent — bare command defaults to show
   logger-txt`
 
@@ -90,6 +106,10 @@ const searchLong = `Search log entries for a term, case-insensitive by default.
 The search term is matched anywhere in the full log line, including the
 timestamp, type, project, and message. Use --case-sensitive for exact
 case matching. Results are limited to the most recent matches (default 10).
+
+Use -t (type) and -p (project) to narrow results. Values are case-insensitive
+and both may be combined with the search term (AND logic). The count (-c)
+applies after all filtering.
 
 Use --start and --end to restrict the search to a date range. Dates use
 DD/MM/YY format; add HH:MM for exact times (quote the value on the CLI).
@@ -104,6 +124,12 @@ const searchExample = `  # Find all entries mentioning "deploy"
   # Return up to 20 matches
   logger-txt search -c 20 bug
 
+  # Search within a type
+  logger-txt search deploy -t WORK
+
+  # Search within a type and project
+  logger-txt search deploy -t WORK -p API
+
   # Search within a date range (e.g. all March meetings)
   logger-txt search meeting --start 01/03/26 --end 31/03/26
 
@@ -111,7 +137,10 @@ const searchExample = `  # Find all entries mentioning "deploy"
   logger-txt search bug --start "14/03/26 12:00" --end "14/03/26 17:00"
 
   # Combine date range with result limit
-  logger-txt search deploy --start 01/01/26 --end 14/03/26 -c 5`
+  logger-txt search deploy --start 01/01/26 --end 14/03/26 -c 5
+
+  # Search WORK entries within a date range
+  logger-txt search bug -t WORK --start 01/03/26 --end 14/03/26`
 
 const deleteLong = `Remove the last entry from the log file.
 

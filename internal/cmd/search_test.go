@@ -211,3 +211,119 @@ func TestSearchCmd_FileNotFound(t *testing.T) {
 		t.Fatal("expected error for non-existent file")
 	}
 }
+
+func TestSearchCmd_TypeFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Fixed bug\n"+
+			"03/03/26 09:30 -0500 - MEETING - Discussed bug\n"+
+			"03/03/26 10:00 -0500 - WORK (API) - Another bug fix\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-t", "WORK")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Fixed bug\n" +
+		"03/03/26 10:00 -0500 - WORK (API) - Another bug fix\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_ProjectFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK (API) - Fixed bug\n"+
+			"03/03/26 09:30 -0500 - WORK (WEB) - Another bug\n"+
+			"03/03/26 10:00 -0500 - WORK (API) - More bug fixes\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-p", "API")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK (API) - Fixed bug\n" +
+		"03/03/26 10:00 -0500 - WORK (API) - More bug fixes\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_TypeAndProjectFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK (API) - Fixed bug\n"+
+			"03/03/26 09:30 -0500 - MEETING (API) - Bug triage\n"+
+			"03/03/26 10:00 -0500 - WORK (WEB) - Web bug\n"+
+			"03/03/26 10:30 -0500 - WORK (API) - Another bug\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-t", "WORK", "-p", "API")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK (API) - Fixed bug\n" +
+		"03/03/26 10:30 -0500 - WORK (API) - Another bug\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_TypeFilterWithCount(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Bug one\n"+
+			"03/03/26 09:30 -0500 - MEETING - Bug two\n"+
+			"03/03/26 10:00 -0500 - WORK - Bug three\n"+
+			"03/03/26 10:30 -0500 - WORK - Bug four\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-t", "WORK", "-c", "2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 10:00 -0500 - WORK - Bug three\n" +
+		"03/03/26 10:30 -0500 - WORK - Bug four\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_TypeFilterWithDateRange(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"20/02/26 09:00 -0500 - WORK - Too early bug\n"+
+			"22/02/26 10:00 -0500 - WORK - In range bug\n"+
+			"22/02/26 11:00 -0500 - MEETING - In range bug wrong type\n"+
+			"22/02/26 12:00 -0500 - WORK - In range bug too\n"+
+			"25/02/26 09:00 -0500 - WORK - Too late bug\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-t", "WORK", "--start", "22/02/26", "--end", "22/02/26")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "22/02/26 10:00 -0500 - WORK - In range bug\n" +
+		"22/02/26 12:00 -0500 - WORK - In range bug too\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_TypeFilterLowercase(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Fixed bug\n"+
+			"03/03/26 09:30 -0500 - MEETING - Bug triage\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "bug", "-t", "work")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Fixed bug\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}

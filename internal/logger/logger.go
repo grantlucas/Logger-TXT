@@ -40,8 +40,10 @@ func Append(path string, e entry.Entry) error {
 	return err
 }
 
-// Tail returns the last n lines from the file.
-func Tail(path string, n int) ([]string, error) {
+// Tail returns the last n lines from the file. When filter is non-nil,
+// each line is parsed and only entries matching the filter count toward n.
+// Unparseable lines are skipped when a filter is active.
+func Tail(path string, n int, filter func(entry.Entry) bool) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -51,7 +53,17 @@ func Tail(path string, n int) ([]string, error) {
 	var lines []string
 	s := NewReverseLineScanner(f)
 	for s.Scan() {
-		lines = append(lines, s.Text())
+		line := s.Text()
+		if filter != nil {
+			e, err := entry.ParseEntry(line)
+			if err != nil {
+				continue
+			}
+			if !filter(e) {
+				continue
+			}
+		}
+		lines = append(lines, line)
 		if len(lines) == n {
 			break
 		}
@@ -68,8 +80,9 @@ func Tail(path string, n int) ([]string, error) {
 }
 
 // Search returns the last limit lines that contain the search term.
-// When caseSensitive is false, comparison is case-insensitive.
-func Search(path string, term string, caseSensitive bool, limit int) ([]string, error) {
+// When caseSensitive is false, comparison is case-insensitive. When filter
+// is non-nil, lines must also match the entry filter to count toward limit.
+func Search(path string, term string, caseSensitive bool, limit int, filter func(entry.Entry) bool) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -89,6 +102,15 @@ func Search(path string, term string, caseSensitive bool, limit int) ([]string, 
 			haystack = strings.ToLower(line)
 		}
 		if strings.Contains(haystack, term) {
+			if filter != nil {
+				e, err := entry.ParseEntry(line)
+				if err != nil {
+					continue
+				}
+				if !filter(e) {
+					continue
+				}
+			}
 			matches = append(matches, line)
 			if len(matches) == limit {
 				break
