@@ -16,7 +16,7 @@ func NewRootCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Default action: run show with default count
 			path := config.ResolveFilePath(filePath)
-			return runShow(cmd.OutOrStdout(), path, 10)
+			return runShow(cmd.OutOrStdout(), path, 10, nil)
 		},
 	}
 

@@ -159,7 +159,7 @@ func TestTail_ReturnsLastNLines(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"line1", "line2", "line3", "line4", "line5"})
 
-	got, err := logger.Tail(path, 3)
+	got, err := logger.Tail(path, 3, nil)
 	if err != nil {
 		t.Fatalf("Tail() error = %v", err)
 	}
@@ -180,7 +180,7 @@ func TestTail_ReturnsAllLinesWhenFewerThanN(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"line1", "line2"})
 
-	got, err := logger.Tail(path, 10)
+	got, err := logger.Tail(path, 10, nil)
 	if err != nil {
 		t.Fatalf("Tail() error = %v", err)
 	}
@@ -200,7 +200,7 @@ func TestTail_EmptyFileReturnsEmptySlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := logger.Tail(path, 10)
+	got, err := logger.Tail(path, 10, nil)
 	if err != nil {
 		t.Fatalf("Tail() error = %v", err)
 	}
@@ -217,7 +217,7 @@ func TestTail_HandlesWindowsLineEndings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := logger.Tail(path, 2)
+	got, err := logger.Tail(path, 2, nil)
 	if err != nil {
 		t.Fatalf("Tail() error = %v", err)
 	}
@@ -236,14 +236,14 @@ func TestTail_HandlesWindowsLineEndings(t *testing.T) {
 func TestTail_ErrorOnReadFailure(t *testing.T) {
 	dir := t.TempDir()
 	// A directory path is not a readable file — triggers a read error.
-	_, err := logger.Tail(dir, 10)
+	_, err := logger.Tail(dir, 10, nil)
 	if err == nil {
 		t.Fatal("Tail() expected error for directory path, got nil")
 	}
 }
 
 func TestTail_ErrorOnNonExistentFile(t *testing.T) {
-	_, err := logger.Tail("/nonexistent/log.txt", 10)
+	_, err := logger.Tail("/nonexistent/log.txt", 10, nil)
 	if err == nil {
 		t.Fatal("Tail() expected error for non-existent file, got nil")
 	}
@@ -258,7 +258,7 @@ func TestSearch_CaseInsensitive(t *testing.T) {
 		"22/02/26 10:32 -0500 - WORK (API) - Deployed",
 	})
 
-	got, err := logger.Search(path, "work", false, 10)
+	got, err := logger.Search(path, "work", false, 10, nil)
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -283,7 +283,7 @@ func TestSearch_CaseSensitive(t *testing.T) {
 		"22/02/26 10:32 -0500 - Grabbed coffee",
 	})
 
-	got, err := logger.Search(path, "WORK", true, 10)
+	got, err := logger.Search(path, "WORK", true, 10, nil)
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -305,7 +305,7 @@ func TestSearch_LimitsResults(t *testing.T) {
 		"22/02/26 10:32 -0500 - WORK - Third",
 	})
 
-	got, err := logger.Search(path, "WORK", false, 2)
+	got, err := logger.Search(path, "WORK", false, 2, nil)
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -327,7 +327,7 @@ func TestSearch_NoMatchesReturnsEmptySlice(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"22/02/26 10:30 -0500 - Grabbed coffee"})
 
-	got, err := logger.Search(path, "NONEXISTENT", false, 10)
+	got, err := logger.Search(path, "NONEXISTENT", false, 10, nil)
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -340,14 +340,14 @@ func TestSearch_NoMatchesReturnsEmptySlice(t *testing.T) {
 func TestSearch_ErrorOnReadFailure(t *testing.T) {
 	dir := t.TempDir()
 	// A directory path is not a readable file — triggers a read error.
-	_, err := logger.Search(dir, "x", false, 10)
+	_, err := logger.Search(dir, "x", false, 10, nil)
 	if err == nil {
 		t.Fatal("Search() expected error for directory path, got nil")
 	}
 }
 
 func TestSearch_ErrorOnNonExistentFile(t *testing.T) {
-	_, err := logger.Search("/nonexistent/log.txt", "term", false, 10)
+	_, err := logger.Search("/nonexistent/log.txt", "term", false, 10, nil)
 	if err == nil {
 		t.Fatal("Search() expected error for non-existent file, got nil")
 	}
@@ -556,5 +556,134 @@ func TestRange_ReturnsEntriesInChronologicalOrder(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("Range()[%d] = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+func TestTail_WithFilter(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Task one",
+		"22/02/26 10:30 -0500 - MEETING - Standup",
+		"22/02/26 11:00 -0500 - WORK (API) - Task two",
+		"22/02/26 11:30 -0500 - MEETING - Review",
+		"22/02/26 12:00 -0500 - WORK - Task three",
+	})
+
+	filter := func(e entry.Entry) bool { return e.Type == "WORK" }
+
+	got, err := logger.Tail(path, 2, filter)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	want := []string{
+		"22/02/26 11:00 -0500 - WORK (API) - Task two",
+		"22/02/26 12:00 -0500 - WORK - Task three",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("Tail() returned %d lines, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Tail()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestTail_WithFilterSkipsUnparseable(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Valid",
+		"this is not a valid log line",
+		"22/02/26 11:00 -0500 - WORK - Also valid",
+	})
+
+	filter := func(e entry.Entry) bool { return e.Type == "WORK" }
+
+	got, err := logger.Tail(path, 10, filter)
+	if err != nil {
+		t.Fatalf("Tail() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Tail() returned %d lines, want 2 (unparseable skipped)", len(got))
+	}
+}
+
+func TestSearch_WithFilter(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Fixed bug in API",
+		"22/02/26 10:30 -0500 - MEETING - Discussed bug",
+		"22/02/26 11:00 -0500 - WORK (API) - Another bug fix",
+		"22/02/26 11:30 -0500 - MEETING - Bug triage",
+	})
+
+	filter := func(e entry.Entry) bool { return e.Type == "WORK" }
+
+	got, err := logger.Search(path, "bug", false, 10, filter)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	want := []string{
+		"22/02/26 10:00 -0500 - WORK - Fixed bug in API",
+		"22/02/26 11:00 -0500 - WORK (API) - Another bug fix",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("Search() returned %d results, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Search()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestSearch_WithFilterRespectsLimit(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Bug one",
+		"22/02/26 10:30 -0500 - WORK - Bug two",
+		"22/02/26 11:00 -0500 - WORK - Bug three",
+	})
+
+	filter := func(e entry.Entry) bool { return e.Type == "WORK" }
+
+	got, err := logger.Search(path, "bug", false, 2, filter)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Search() returned %d results, want 2", len(got))
+	}
+	if got[0] != "22/02/26 10:30 -0500 - WORK - Bug two" {
+		t.Errorf("Search()[0] = %q, want last 2 matches", got[0])
+	}
+}
+
+func TestSearch_WithFilterSkipsUnparseable(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Found bug",
+		"this line mentions bug but is not parseable",
+		"22/02/26 11:00 -0500 - WORK - Another bug",
+	})
+
+	filter := func(e entry.Entry) bool { return e.Type == "WORK" }
+
+	got, err := logger.Search(path, "bug", false, 10, filter)
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("Search() returned %d results, want 2 (unparseable skipped)", len(got))
 	}
 }

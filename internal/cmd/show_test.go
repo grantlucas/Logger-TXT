@@ -233,3 +233,139 @@ func TestShowCmd_FileNotFound(t *testing.T) {
 		t.Fatal("expected error for non-existent file")
 	}
 }
+
+func TestShowCmd_TypeFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Task one\n"+
+			"03/03/26 09:30 -0500 - MEETING - Standup\n"+
+			"03/03/26 10:00 -0500 - WORK (API) - Task two\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "WORK")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Task one\n" +
+		"03/03/26 10:00 -0500 - WORK (API) - Task two\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_ProjectFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK (API) - Task one\n"+
+			"03/03/26 09:30 -0500 - WORK (WEB) - Task two\n"+
+			"03/03/26 10:00 -0500 - WORK (API) - Task three\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-p", "API")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK (API) - Task one\n" +
+		"03/03/26 10:00 -0500 - WORK (API) - Task three\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_TypeAndProjectFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK (API) - Task one\n"+
+			"03/03/26 09:30 -0500 - MEETING (API) - Standup\n"+
+			"03/03/26 10:00 -0500 - WORK (WEB) - Task two\n"+
+			"03/03/26 10:30 -0500 - WORK (API) - Task three\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "WORK", "-p", "API")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK (API) - Task one\n" +
+		"03/03/26 10:30 -0500 - WORK (API) - Task three\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_TypeFilterCountAfterFilter(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Task one\n"+
+			"03/03/26 09:30 -0500 - MEETING - Standup\n"+
+			"03/03/26 10:00 -0500 - WORK - Task two\n"+
+			"03/03/26 10:30 -0500 - WORK - Task three\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "WORK", "-c", "2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 10:00 -0500 - WORK - Task two\n" +
+		"03/03/26 10:30 -0500 - WORK - Task three\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_TypeFilterLowercase(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"03/03/26 09:00 -0500 - WORK - Task one\n"+
+			"03/03/26 09:30 -0500 - MEETING - Standup\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "work")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "03/03/26 09:00 -0500 - WORK - Task one\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_TypeFilterWithDateRange(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"20/02/26 09:00 -0500 - WORK - Too early\n"+
+			"22/02/26 10:00 -0500 - WORK - In range\n"+
+			"22/02/26 11:00 -0500 - MEETING - In range but wrong type\n"+
+			"22/02/26 12:00 -0500 - WORK - In range too\n"+
+			"25/02/26 09:00 -0500 - WORK - Too late\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "WORK", "--start", "22/02/26", "--end", "22/02/26")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "22/02/26 10:00 -0500 - WORK - In range\n" +
+		"22/02/26 12:00 -0500 - WORK - In range too\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestShowCmd_TypeFilterWithDateRangeAndCount(t *testing.T) {
+	dir := t.TempDir()
+	logFile := writeLogFile(t, dir,
+		"22/02/26 09:00 -0500 - WORK - First\n"+
+			"22/02/26 10:00 -0500 - MEETING - Skip\n"+
+			"22/02/26 11:00 -0500 - WORK - Second\n"+
+			"22/02/26 12:00 -0500 - WORK - Third\n")
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "-t", "WORK", "--start", "22/02/26", "--end", "22/02/26", "-c", "2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "22/02/26 11:00 -0500 - WORK - Second\n" +
+		"22/02/26 12:00 -0500 - WORK - Third\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}

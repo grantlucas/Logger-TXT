@@ -21,7 +21,7 @@ func newDeleteCmd() *cobra.Command {
 			path := config.ResolveFilePath(filePath)
 
 			// Preview the last line
-			lines, err := logger.Tail(path, 1)
+			lines, err := logger.Tail(path, 1, nil)
 			if err != nil {
 				return err
 			}
