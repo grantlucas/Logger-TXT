@@ -39,3 +39,6 @@ checkpoint before moving on.
 - Cross-platform: use `filepath.Join`, `os.UserHomeDir()`, handle `\r\n`
 - Tests use `t.TempDir()` for isolated file operations
 - CI runs on ubuntu-latest and macos-latest
+- Prefer `ReverseLineScanner` over forward scanning (`bufio.Scanner`) when
+  reading from the log file — log files can span 10+ years, and reverse
+  scanning stops as soon as enough results are collected

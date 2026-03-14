@@ -2,7 +2,6 @@
 package logger
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,16 +49,20 @@ func Tail(path string, n int) ([]string, error) {
 	defer func() { _ = f.Close() }()
 
 	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	s := NewReverseLineScanner(f)
+	for s.Scan() {
+		lines = append(lines, s.Text())
+		if len(lines) == n {
+			break
+		}
 	}
-	if err := scanner.Err(); err != nil {
+	if err := s.Err(); err != nil {
 		return nil, err
 	}
 
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
+	// Reverse to chronological order
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
 	}
 	return lines, nil
 }
@@ -78,23 +81,27 @@ func Search(path string, term string, caseSensitive bool, limit int) ([]string, 
 	}
 
 	var matches []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
+	s := NewReverseLineScanner(f)
+	for s.Scan() {
+		line := s.Text()
 		haystack := line
 		if !caseSensitive {
 			haystack = strings.ToLower(line)
 		}
 		if strings.Contains(haystack, term) {
 			matches = append(matches, line)
+			if len(matches) == limit {
+				break
+			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
+	if err := s.Err(); err != nil {
 		return nil, err
 	}
 
-	if len(matches) > limit {
-		matches = matches[len(matches)-limit:]
+	// Reverse to chronological order
+	for i, j := 0, len(matches)-1; i < j; i, j = i+1, j-1 {
+		matches[i], matches[j] = matches[j], matches[i]
 	}
 	return matches, nil
 }
