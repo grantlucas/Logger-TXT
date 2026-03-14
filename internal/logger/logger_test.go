@@ -445,3 +445,134 @@ func TestDeleteLast_ErrorOnNonExistentFile(t *testing.T) {
 		t.Fatal("DeleteLast() expected error for non-existent file, got nil")
 	}
 }
+
+func TestRange_SkipsUnparseableLines(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	tz := time.FixedZone("EST", -5*3600)
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - Valid entry",
+		"this is not a valid log line",
+		"22/02/26 11:00 -0500 - Another valid",
+	})
+
+	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 23, 59, 0, 0, tz)
+
+	got, err := logger.Range(path, start, end, nil)
+	if err != nil {
+		t.Fatalf("Range() error = %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("Range() returned %d lines, want 2 (unparseable should be skipped)", len(got))
+	}
+}
+
+func TestRange_ErrorOnMissingFile(t *testing.T) {
+	tz := time.FixedZone("EST", -5*3600)
+	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 23, 59, 0, 0, tz)
+
+	_, err := logger.Range("/nonexistent/log.txt", start, end, nil)
+	if err == nil {
+		t.Fatal("Range() expected error for missing file, got nil")
+	}
+}
+
+func TestRange_EmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	if err := os.WriteFile(path, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
+	tz := time.FixedZone("EST", -5*3600)
+	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 23, 59, 0, 0, tz)
+
+	got, err := logger.Range(path, start, end, nil)
+	if err != nil {
+		t.Fatalf("Range() error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("Range() returned %d lines for empty file, want 0", len(got))
+	}
+}
+
+func TestRange_FilterFunction(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	tz := time.FixedZone("EST", -5*3600)
+	writeLines(t, path, []string{
+		"22/02/26 10:00 -0500 - WORK - Task one",
+		"22/02/26 11:00 -0500 - Coffee break",
+		"22/02/26 12:00 -0500 - WORK - Task two",
+	})
+
+	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 23, 59, 0, 0, tz)
+
+	got, err := logger.Range(path, start, end, func(e entry.Entry) bool {
+		return e.Type == "WORK"
+	})
+	if err != nil {
+		t.Fatalf("Range() error = %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("Range() returned %d lines, want 2", len(got))
+	}
+}
+
+func TestRange_BoundariesInclusive(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	tz := time.FixedZone("EST", -5*3600)
+	writeLines(t, path, []string{
+		"22/02/26 09:00 -0500 - At start",
+		"22/02/26 10:00 -0500 - Middle",
+		"22/02/26 17:00 -0500 - At end",
+	})
+
+	start := time.Date(2026, 2, 22, 9, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 17, 0, 0, 0, tz)
+
+	got, err := logger.Range(path, start, end, nil)
+	if err != nil {
+		t.Fatalf("Range() error = %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("Range() returned %d lines, want 3 (boundaries should be inclusive)", len(got))
+	}
+}
+
+func TestRange_ReturnsEntriesInChronologicalOrder(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.txt")
+	tz := time.FixedZone("EST", -5*3600)
+	writeLines(t, path, []string{
+		"20/02/26 09:00 -0500 - Too early",
+		"22/02/26 10:00 -0500 - In range first",
+		"22/02/26 11:00 -0500 - In range second",
+		"25/02/26 09:00 -0500 - Too late",
+	})
+
+	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
+	end := time.Date(2026, 2, 22, 23, 59, 0, 0, tz)
+
+	got, err := logger.Range(path, start, end, nil)
+	if err != nil {
+		t.Fatalf("Range() error = %v", err)
+	}
+
+	want := []string{
+		"22/02/26 10:00 -0500 - In range first",
+		"22/02/26 11:00 -0500 - In range second",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("Range() returned %d lines, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Range()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
