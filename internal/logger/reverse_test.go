@@ -97,7 +97,7 @@ func TestReverseLineScanner_ReadError(t *testing.T) {
 	}
 	s := NewReverseLineScanner(f)
 	// Close the file to force ReadAt errors
-	f.Close()
+	_ = f.Close()
 
 	for s.Scan() {
 		// drain

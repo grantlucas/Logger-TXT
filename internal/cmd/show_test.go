@@ -137,6 +137,7 @@ func TestShowCmd_DateRangeWithCount(t *testing.T) {
 }
 
 func TestShowCmd_DateRangeWithTime(t *testing.T) {
+	t.Setenv("TZ", "EST5EDT")
 	dir := t.TempDir()
 	logFile := writeLogFile(t, dir,
 		"22/02/26 08:00 -0500 - Before range\n"+

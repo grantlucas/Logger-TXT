@@ -29,7 +29,7 @@ func TestScanRange_ScannerError(t *testing.T) {
 	s := NewReverseLineScanner(f)
 
 	// Close fd so ReadAt fails with EBADF
-	f.Close()
+	_ = f.Close()
 
 	tz := time.FixedZone("EST", -5*3600)
 	start := time.Date(2026, 2, 22, 0, 0, 0, 0, tz)
