@@ -85,6 +85,28 @@ func TestReverseLineScanner_WindowsLineEndings(t *testing.T) {
 	}
 }
 
+func TestReverseLineScanner_ReadError(t *testing.T) {
+	// Create a file, open it, then close it to force read errors
+	path := filepath.Join(t.TempDir(), "test.txt")
+	if err := os.WriteFile(path, []byte("line1\nline2\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewReverseLineScanner(f)
+	// Close the file to force ReadAt errors
+	f.Close()
+
+	for s.Scan() {
+		// drain
+	}
+	if s.Err() == nil {
+		t.Fatal("expected error after closing file, got nil")
+	}
+}
+
 func TestReverseLineScanner_MultipleLines(t *testing.T) {
 	f := writeTempFile(t, "line1\nline2\nline3\n")
 	got := scanAll(t, f)
