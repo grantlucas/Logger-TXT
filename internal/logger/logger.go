@@ -109,8 +109,11 @@ func Range(path string, start, end time.Time, fn func(entry.Entry) bool) ([]stri
 	}
 	defer func() { _ = f.Close() }()
 
+	return scanRange(NewReverseLineScanner(f), start, end, fn)
+}
+
+func scanRange(s *ReverseLineScanner, start, end time.Time, fn func(entry.Entry) bool) ([]string, error) {
 	var collected []string
-	s := NewReverseLineScanner(f)
 	for s.Scan() {
 		line := s.Text()
 		e, err := entry.ParseEntry(line)
