@@ -31,7 +31,7 @@ make install
 
 ## Quick Access
 
-For faster usage, add a shell alias:
+For faster usage, add an alias:
 
 ```bash
 alias l="logger-txt"
