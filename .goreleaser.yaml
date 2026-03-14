@@ -54,6 +54,7 @@ brews:
     license: "GPL-3.0-or-later"
     install: |
       bin.install "logger-txt"
+      generate_completions_from_executable(bin/"logger-txt", "completion")
     test: |
       system bin/"logger-txt", "version"
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
