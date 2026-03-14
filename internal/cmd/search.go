@@ -30,7 +30,8 @@ func newSearchCmd() *cobra.Command {
 			}
 
 			if hasRange {
-				return runSearchRange(cmd.OutOrStdout(), path, args[0], caseSensitive, count, startStr, endStr)
+				countChanged := cmd.Flags().Changed("count")
+				return runSearchRange(cmd.OutOrStdout(), path, args[0], caseSensitive, count, countChanged, startStr, endStr)
 			}
 
 			lines, err := logger.Search(path, args[0], caseSensitive, count)
@@ -53,7 +54,7 @@ func newSearchCmd() *cobra.Command {
 	return cmd
 }
 
-func runSearchRange(out io.Writer, path, term string, caseSensitive bool, count int, startStr, endStr string) error {
+func runSearchRange(out io.Writer, path, term string, caseSensitive bool, count int, countChanged bool, startStr, endStr string) error {
 	loc := time.Now().Location()
 
 	start, end, err := entry.ParseDateRange(startStr, endStr, loc)
@@ -79,7 +80,7 @@ func runSearchRange(out io.Writer, path, term string, caseSensitive bool, count 
 		return err
 	}
 
-	if len(lines) > count {
+	if countChanged && len(lines) > count {
 		lines = lines[len(lines)-count:]
 	}
 

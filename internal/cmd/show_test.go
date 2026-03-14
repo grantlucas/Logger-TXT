@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -203,6 +204,31 @@ func TestShowCmd_DateRangeFileNotFound(t *testing.T) {
 	_, _, err := executeCmd(t, "--file", "/nonexistent/log.txt", "show", "--start", "22/02/26", "--end", "22/02/26")
 	if err == nil {
 		t.Fatal("expected error for non-existent file with date range")
+	}
+}
+
+func TestShowCmd_DateRangeDefaultCount(t *testing.T) {
+	dir := t.TempDir()
+
+	// Build 12 entries on the same day — more than the default count of 10
+	var content string
+	for i := 0; i < 12; i++ {
+		content += fmt.Sprintf("22/02/26 %02d:00 -0500 - Entry %d\n", 8+i, i+1)
+	}
+	logFile := writeLogFile(t, dir, content)
+
+	out, _, err := executeCmd(t, "--file", logFile, "show", "--start", "22/02/26", "--end", "22/02/26")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// All 12 entries should be returned since -c was not explicitly set
+	var expected string
+	for i := 0; i < 12; i++ {
+		expected += fmt.Sprintf("22/02/26 %02d:00 -0500 - Entry %d\n", 8+i, i+1)
+	}
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
 	}
 }
 
