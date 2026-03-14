@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func writeLogFile(t *testing.T, dir string, content string) string {
@@ -137,7 +138,10 @@ func TestShowCmd_DateRangeWithCount(t *testing.T) {
 }
 
 func TestShowCmd_DateRangeWithTime(t *testing.T) {
-	t.Setenv("TZ", "EST5EDT")
+	origLocal := time.Local
+	time.Local = time.FixedZone("EST", -5*3600)
+	defer func() { time.Local = origLocal }()
+
 	dir := t.TempDir()
 	logFile := writeLogFile(t, dir,
 		"22/02/26 08:00 -0500 - Before range\n"+
