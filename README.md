@@ -50,19 +50,58 @@ logger-txt add -t personal -p project "Entry with both"
 
 ### Showing recent entries
 
+Use `show` to browse entries by type or project. For free-text keyword
+matching, use `search` instead.
+
 ```bash
 logger-txt show
 logger-txt show -c 20
+logger-txt show -t personal
+logger-txt show -p myproject
+logger-txt show --start "01/03/26" --end "14/03/26"
 ```
 
 Running `logger-txt` with no subcommand is equivalent to `logger-txt show`.
 
 ### Searching entries
 
+Use `search` for free-text keyword searches across log entries. To browse
+entries by type or project without a search term, use `show -t` / `show -p`
+instead.
+
+The search term matches anywhere in the full log line, including the
+timestamp, type, project, and message. Note that `search WORK` is not the
+same as `show -t WORK` — the search term will also match entries that mention
+"WORK" in their message body. Use `show -t` to filter strictly by the type
+tag.
+
 ```bash
 logger-txt search "coffee"
 logger-txt search --case-sensitive "API"
 logger-txt search -c 5 "deploy"
+logger-txt search -t work "meeting"
+logger-txt search --start "01/03/26" --end "14/03/26" "deploy"
+```
+
+### Filtering
+
+Both `show` and `search` support the following filters:
+
+- `--type` / `-t` - filter by entry type
+- `--project` / `-p` - filter by project
+- `--start` - start date (`DD/MM/YY` or `DD/MM/YY HH:MM`)
+- `--end` - end date (`DD/MM/YY` or `DD/MM/YY HH:MM`)
+- `--count` / `-c` - number of entries to display (default: 10)
+
+Date ranges require both `--start` and `--end`. When a date range is active,
+all matching entries are returned — the default count of 10 does not apply.
+Pass `-c` explicitly to limit results within the range.
+
+Filters can be combined:
+
+```bash
+logger-txt show -t work -p api --start "01/03/26" -c 50
+logger-txt search -p backend --start "01/03/26" --end "07/03/26" "deploy"
 ```
 
 ### Deleting the last entry
