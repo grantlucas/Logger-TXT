@@ -18,8 +18,14 @@ const rootExample = `  # Add a simple entry
   # Show last 5 entries
   logger-txt show -c 5
 
+  # Show all entries from a specific date
+  logger-txt show --start 14/03/26 --end 14/03/26
+
   # Search entries
   logger-txt search roadmap
+
+  # Search within a date range
+  logger-txt search deploy --start 01/03/26 --end 14/03/26
 
   # Delete the last entry (with confirmation)
   logger-txt delete`
@@ -64,13 +70,16 @@ const showExample = `  # Show the default last 10 entries
   # Show the last 25 entries
   logger-txt show -c 25
 
-  # Show entries from a specific date
-  logger-txt show --start 22/02/26 --end 22/02/26
+  # Show all entries from a single day
+  logger-txt show --start 14/03/26 --end 14/03/26
 
-  # Show entries within a time window
+  # Show entries for a date range (e.g. first two weeks of March)
+  logger-txt show --start 01/03/26 --end 14/03/26
+
+  # Show entries within a specific time window (quote to include time)
   logger-txt show --start "14/03/26 09:00" --end "14/03/26 17:00"
 
-  # Limit date range results
+  # Show the last 5 entries from a date range
   logger-txt show --start 01/03/26 --end 14/03/26 -c 5
 
   # Equivalent — bare command defaults to show
@@ -95,11 +104,14 @@ const searchExample = `  # Find all entries mentioning "deploy"
   # Return up to 20 matches
   logger-txt search -c 20 bug
 
-  # Search within a date range
-  logger-txt search meeting --start 01/03/26 --end 14/03/26
+  # Search within a date range (e.g. all March meetings)
+  logger-txt search meeting --start 01/03/26 --end 31/03/26
 
-  # Search within a time window
-  logger-txt search bug --start "14/03/26 09:00" --end "14/03/26 17:00"`
+  # Search a specific day's afternoon entries for bugs
+  logger-txt search bug --start "14/03/26 12:00" --end "14/03/26 17:00"
+
+  # Combine date range with result limit
+  logger-txt search deploy --start 01/01/26 --end 14/03/26 -c 5`
 
 const deleteLong = `Remove the last entry from the log file.
 
