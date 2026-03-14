@@ -233,22 +233,12 @@ func TestTail_HandlesWindowsLineEndings(t *testing.T) {
 	}
 }
 
-func TestTail_ErrorOnScannerFailure(t *testing.T) {
+func TestTail_ErrorOnReadFailure(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "log.txt")
-	// bufio.Scanner has a default max token size of 64KB.
-	// A line exceeding that triggers a scan error.
-	longLine := make([]byte, 1024*1024)
-	for i := range longLine {
-		longLine[i] = 'x'
-	}
-	if err := os.WriteFile(path, longLine, 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := logger.Tail(path, 10)
+	// A directory path is not a readable file — triggers a read error.
+	_, err := logger.Tail(dir, 10)
 	if err == nil {
-		t.Fatal("Tail() expected error for oversized line, got nil")
+		t.Fatal("Tail() expected error for directory path, got nil")
 	}
 }
 
@@ -347,20 +337,12 @@ func TestSearch_NoMatchesReturnsEmptySlice(t *testing.T) {
 	}
 }
 
-func TestSearch_ErrorOnScannerFailure(t *testing.T) {
+func TestSearch_ErrorOnReadFailure(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "log.txt")
-	longLine := make([]byte, 1024*1024)
-	for i := range longLine {
-		longLine[i] = 'x'
-	}
-	if err := os.WriteFile(path, longLine, 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := logger.Search(path, "x", false, 10)
+	// A directory path is not a readable file — triggers a read error.
+	_, err := logger.Search(dir, "x", false, 10)
 	if err == nil {
-		t.Fatal("Search() expected error for oversized line, got nil")
+		t.Fatal("Search() expected error for directory path, got nil")
 	}
 }
 
