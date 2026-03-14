@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -127,6 +128,31 @@ func TestSearchCmd_DateRangeWithCount(t *testing.T) {
 
 	expected := "22/02/26 10:00 -0500 - WORK - Second\n" +
 		"22/02/26 11:00 -0500 - WORK - Third\n"
+	if out != expected {
+		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
+	}
+}
+
+func TestSearchCmd_DateRangeDefaultCount(t *testing.T) {
+	dir := t.TempDir()
+
+	// Build 12 matching entries — more than the default count of 10
+	var content string
+	for i := 0; i < 12; i++ {
+		content += fmt.Sprintf("22/02/26 %02d:00 -0500 - WORK - Task %d\n", 8+i, i+1)
+	}
+	logFile := writeLogFile(t, dir, content)
+
+	out, _, err := executeCmd(t, "--file", logFile, "search", "work", "--start", "22/02/26", "--end", "22/02/26")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// All 12 entries should be returned since -c was not explicitly set
+	var expected string
+	for i := 0; i < 12; i++ {
+		expected += fmt.Sprintf("22/02/26 %02d:00 -0500 - WORK - Task %d\n", 8+i, i+1)
+	}
 	if out != expected {
 		t.Errorf("output mismatch\ngot:  %q\nwant: %q", out, expected)
 	}

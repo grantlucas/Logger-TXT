@@ -24,7 +24,7 @@ func runShow(out io.Writer, path string, count int) error {
 	return nil
 }
 
-func runShowRange(out io.Writer, path string, count int, startStr, endStr string) error {
+func runShowRange(out io.Writer, path string, count int, countChanged bool, startStr, endStr string) error {
 	loc := time.Now().Location()
 
 	start, end, err := entry.ParseDateRange(startStr, endStr, loc)
@@ -37,7 +37,7 @@ func runShowRange(out io.Writer, path string, count int, startStr, endStr string
 		return err
 	}
 
-	if len(lines) > count {
+	if countChanged && len(lines) > count {
 		lines = lines[len(lines)-count:]
 	}
 
@@ -64,7 +64,8 @@ func newShowCmd() *cobra.Command {
 			}
 
 			if hasRange {
-				return runShowRange(cmd.OutOrStdout(), path, count, startStr, endStr)
+				countChanged := cmd.Flags().Changed("count")
+				return runShowRange(cmd.OutOrStdout(), path, count, countChanged, startStr, endStr)
 			}
 
 			return runShow(cmd.OutOrStdout(), path, count)
