@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/grantlucas/Logger-TXT/internal/entry"
 )
@@ -96,6 +97,46 @@ func Search(path string, term string, caseSensitive bool, limit int) ([]string, 
 		matches = matches[len(matches)-limit:]
 	}
 	return matches, nil
+}
+
+// Range returns log lines whose timestamps fall within [start, end].
+// Lines are returned in chronological order. If fn is non-nil, only entries
+// for which fn returns true are included. Unparseable lines are skipped.
+func Range(path string, start, end time.Time, fn func(entry.Entry) bool) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	var collected []string
+	s := NewReverseLineScanner(f)
+	for s.Scan() {
+		line := s.Text()
+		e, err := entry.ParseEntry(line)
+		if err != nil {
+			continue // skip unparseable lines
+		}
+		if e.Time.After(end) {
+			continue // haven't reached the window yet
+		}
+		if e.Time.Before(start) {
+			break // past the window — done
+		}
+		if fn != nil && !fn(e) {
+			continue
+		}
+		collected = append(collected, line)
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+
+	// Reverse to chronological order
+	for i, j := 0, len(collected)-1; i < j; i, j = i+1, j-1 {
+		collected[i], collected[j] = collected[j], collected[i]
+	}
+	return collected, nil
 }
 
 // DeleteLast removes the last line from the file and returns it.
