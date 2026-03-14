@@ -7,7 +7,10 @@ and a message. The log file is portable — it is just a text file you can read,
 grep, back up, or version-control with standard tools.
 
 When run without a subcommand, logger-txt behaves like "show" and prints the
-10 most recent entries.`
+10 most recent entries.
+
+Use "show" to browse recent entries (filterable by -t type and -p project).
+Use "search" to find entries matching a keyword.`
 
 const rootExample = `  # Add a simple entry
   logger-txt add Had coffee with the team
@@ -53,6 +56,9 @@ const addExample = `  # Simple message
 
 const showLong = `Display the most recent entries from the log file, newest last.
 
+Use this command to browse entries by type or project — pass -t and -p to
+filter. For free-text keyword matching, use "search" instead.
+
 Output goes to stdout with one entry per line, so it works well in a pipe:
 
   logger-txt show | grep MEETING
@@ -64,7 +70,10 @@ so "-t WORK -c 10" returns the last 10 WORK entries.
 
 Use --start and --end to display entries within a date range. Dates use
 DD/MM/YY format; add HH:MM for exact times (quote the value on the CLI).
-Date-only --end values default to 23:59. Both flags must be provided together.
+Date-only --start values begin at 00:00; date-only --end values end at 23:59.
+Both flags must be provided together. When a date range is active, all matching
+entries are returned — the default count of 10 does not apply. Pass -c
+explicitly to limit results within the range.
 
 Running "logger-txt" with no subcommand is equivalent to "logger-txt show".`
 
@@ -103,9 +112,18 @@ const showExample = `  # Show the default last 10 entries
 
 const searchLong = `Search log entries for a term, case-insensitive by default.
 
+Use this command for free-text keyword searches across log entries. To browse
+entries by type or project without a search term, use "show -t" / "show -p"
+instead.
+
 The search term is matched anywhere in the full log line, including the
 timestamp, type, project, and message. Use --case-sensitive for exact
 case matching. Results are limited to the most recent matches (default 10).
+
+Note: "search TYPENAME" is not equivalent to "show -t TYPENAME". The search
+term matches anywhere in the full log line — including message text — so
+entries that mention the type name in their message body will appear as false
+positives. Use "show -t" to filter strictly by the type tag.
 
 Use -t (type) and -p (project) to narrow results. Values are case-insensitive
 and both may be combined with the search term (AND logic). The count (-c)
@@ -113,7 +131,10 @@ applies after all filtering.
 
 Use --start and --end to restrict the search to a date range. Dates use
 DD/MM/YY format; add HH:MM for exact times (quote the value on the CLI).
-Date-only --end values default to 23:59. Both flags must be provided together.`
+Date-only --start values begin at 00:00; date-only --end values end at 23:59.
+Both flags must be provided together. When a date range is active, all matching
+entries are returned — the default count of 10 does not apply. Pass -c
+explicitly to limit results within the range.`
 
 const searchExample = `  # Find all entries mentioning "deploy"
   logger-txt search deploy
