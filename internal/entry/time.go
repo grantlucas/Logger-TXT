@@ -1,6 +1,9 @@
 package entry
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	inputDateLayout     = "02/01/06"
@@ -18,6 +21,26 @@ func ParseInputTime(input string, loc *time.Location) (time.Time, bool, error) {
 		return time.Time{}, false, err
 	}
 	return t, true, nil
+}
+
+// ParseDateRange parses start and end date strings into a time range.
+// When end is date-only, EndOfDay is applied automatically.
+func ParseDateRange(startStr, endStr string, loc *time.Location) (time.Time, time.Time, error) {
+	start, _, err := ParseInputTime(startStr, loc)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid --start value: %w", err)
+	}
+
+	end, endDateOnly, err := ParseInputTime(endStr, loc)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid --end value: %w", err)
+	}
+
+	if endDateOnly {
+		end = EndOfDay(end)
+	}
+
+	return start, end, nil
 }
 
 // EndOfDay returns t with the time set to 23:59 in the same location.

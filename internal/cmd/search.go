@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -21,15 +22,15 @@ func newSearchCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")
 			count, _ := cmd.Flags().GetInt("count")
-			startStr, _ := cmd.Flags().GetString("start")
-			endStr, _ := cmd.Flags().GetString("end")
 			path := config.ResolveFilePath(filePath)
 
-			if startStr != "" || endStr != "" {
-				if startStr == "" || endStr == "" {
-					return fmt.Errorf("--start and --end must both be provided")
-				}
-				return runSearchRange(cmd, path, args[0], caseSensitive, count, startStr, endStr)
+			startStr, endStr, hasRange, err := parseDateRangeFlags(cmd)
+			if err != nil {
+				return err
+			}
+
+			if hasRange {
+				return runSearchRange(cmd.OutOrStdout(), path, args[0], caseSensitive, count, startStr, endStr)
 			}
 
 			lines, err := logger.Search(path, args[0], caseSensitive, count)
@@ -47,27 +48,17 @@ func newSearchCmd() *cobra.Command {
 
 	cmd.Flags().Bool("case-sensitive", false, "perform case-sensitive search")
 	cmd.Flags().IntP("count", "c", 10, "maximum number of results")
-	cmd.Flags().String("start", "", "start date (DD/MM/YY or DD/MM/YY HH:MM)")
-	cmd.Flags().String("end", "", "end date (DD/MM/YY or DD/MM/YY HH:MM)")
+	addDateRangeFlags(cmd)
 
 	return cmd
 }
 
-func runSearchRange(cmd *cobra.Command, path, term string, caseSensitive bool, count int, startStr, endStr string) error {
+func runSearchRange(out io.Writer, path, term string, caseSensitive bool, count int, startStr, endStr string) error {
 	loc := time.Now().Location()
 
-	start, _, err := entry.ParseInputTime(startStr, loc)
+	start, end, err := entry.ParseDateRange(startStr, endStr, loc)
 	if err != nil {
-		return fmt.Errorf("invalid --start value: %w", err)
-	}
-
-	end, endDateOnly, err := entry.ParseInputTime(endStr, loc)
-	if err != nil {
-		return fmt.Errorf("invalid --end value: %w", err)
-	}
-
-	if endDateOnly {
-		end = entry.EndOfDay(end)
+		return err
 	}
 
 	searchTerm := term
@@ -93,7 +84,7 @@ func runSearchRange(cmd *cobra.Command, path, term string, caseSensitive bool, c
 	}
 
 	for _, line := range lines {
-		fmt.Fprintln(cmd.OutOrStdout(), line)
+		fmt.Fprintln(out, line)
 	}
 
 	return nil

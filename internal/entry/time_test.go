@@ -87,3 +87,61 @@ func TestParseInputTime_DateTime(t *testing.T) {
 		t.Errorf("time = %v, want %v", got, want)
 	}
 }
+
+func TestParseDateRange_Valid(t *testing.T) {
+	loc := time.FixedZone("EST", -5*3600)
+
+	start, end, err := ParseDateRange("22/02/26", "23/02/26", loc)
+	if err != nil {
+		t.Fatalf("ParseDateRange() error = %v", err)
+	}
+
+	wantStart := time.Date(2026, 2, 22, 0, 0, 0, 0, loc)
+	if !start.Equal(wantStart) {
+		t.Errorf("start = %v, want %v", start, wantStart)
+	}
+
+	// end is date-only, so EndOfDay should be applied
+	wantEnd := time.Date(2026, 2, 23, 23, 59, 0, 0, loc)
+	if !end.Equal(wantEnd) {
+		t.Errorf("end = %v, want %v", end, wantEnd)
+	}
+}
+
+func TestParseDateRange_WithTime(t *testing.T) {
+	loc := time.FixedZone("EST", -5*3600)
+
+	start, end, err := ParseDateRange("22/02/26 09:00", "22/02/26 17:00", loc)
+	if err != nil {
+		t.Fatalf("ParseDateRange() error = %v", err)
+	}
+
+	wantStart := time.Date(2026, 2, 22, 9, 0, 0, 0, loc)
+	if !start.Equal(wantStart) {
+		t.Errorf("start = %v, want %v", start, wantStart)
+	}
+
+	// end has time, so EndOfDay should NOT be applied
+	wantEnd := time.Date(2026, 2, 22, 17, 0, 0, 0, loc)
+	if !end.Equal(wantEnd) {
+		t.Errorf("end = %v, want %v", end, wantEnd)
+	}
+}
+
+func TestParseDateRange_InvalidStart(t *testing.T) {
+	loc := time.FixedZone("EST", -5*3600)
+
+	_, _, err := ParseDateRange("bad", "22/02/26", loc)
+	if err == nil {
+		t.Fatal("expected error for invalid start")
+	}
+}
+
+func TestParseDateRange_InvalidEnd(t *testing.T) {
+	loc := time.FixedZone("EST", -5*3600)
+
+	_, _, err := ParseDateRange("22/02/26", "bad", loc)
+	if err == nil {
+		t.Fatal("expected error for invalid end")
+	}
+}
