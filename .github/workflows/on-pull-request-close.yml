@@ -39,10 +39,13 @@ jobs:
 
       - name: "Create or Update Draft Release"
         uses: actions/github-script@v8
+        env:
+          VERSION_TAG: ${{ steps.semver.outputs.version_tag }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             try {
+              const versionTag = process.env.VERSION_TAG;
               const { data: releases } = await github.rest.repos.listReleases({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -51,7 +54,7 @@ jobs:
 
               // Remove any existing draft release for the same version
               for (const release of releases) {
-                if (release && release.draft === true && release.tag_name === '${{ steps.semver.outputs.version_tag }}') {
+                if (release && release.draft === true && release.tag_name === versionTag) {
                   await github.rest.repos.deleteRelease({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -63,9 +66,9 @@ jobs:
               await github.rest.repos.createRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                tag_name: '${{ steps.semver.outputs.version_tag }}',
+                tag_name: versionTag,
                 target_commitish: 'main',
-                name: '${{ steps.semver.outputs.version_tag }}',
+                name: versionTag,
                 draft: true,
                 prerelease: false,
                 generate_release_notes: true,
