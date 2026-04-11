@@ -16,6 +16,9 @@ jobs:
     name: "PR Merged"
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
+    concurrency:
+      group: create-release-${{ github.repository }}
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
