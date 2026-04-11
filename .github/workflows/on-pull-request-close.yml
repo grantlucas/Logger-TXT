@@ -1,0 +1,114 @@
+name: "PR: Closed"
+run-name: >-
+  ${{ github.event.pull_request.merged == true
+    && format('PR: Merged by @{0}', github.actor)
+    || format('PR: Closed by @{0}', github.actor) }}
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  pr-merged:
+    name: "PR Merged"
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    concurrency:
+      group: create-release-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: "Semantic Versioning"
+        id: semver
+        uses: paulhatch/semantic-version@8da30f99b5b2e7a26ced60b1dad2e41756d6edf4 # v6.0.2
+        with:
+          tag_prefix: "v"
+          major_pattern: "/(MAJOR)|!:|BREAKING CHANGE:/"
+          minor_pattern: '/feat(?!!)(\(.*\))?:/'
+          minor_regexp_flags: "i"
+          bump_each_commit: false
+          search_commit_body: true
+
+      - name: "Create or Update Draft Release"
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          VERSION_TAG: ${{ steps.semver.outputs.version_tag }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              const versionTag = process.env.VERSION_TAG;
+              const { data: releases } = await github.rest.repos.listReleases({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+
+              // Remove any existing draft release for the same version
+              for (const release of releases) {
+                if (release && release.draft === true && release.tag_name === versionTag) {
+                  await github.rest.repos.deleteRelease({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    release_id: release.id
+                  });
+                }
+              }
+
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: versionTag,
+                target_commitish: 'main',
+                name: versionTag,
+                draft: true,
+                prerelease: false,
+                generate_release_notes: true,
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+            }
+
+      - name: "Comment on PR"
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          VERSION_TAG: ${{ steps.semver.outputs.version_tag }}
+          ACTOR: ${{ github.event.pull_request.merged_by.login || github.actor }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              const currentDate = new Date().toISOString();
+              const versionTag = process.env.VERSION_TAG;
+              const actor = process.env.ACTOR;
+
+              const output = `<!-- Comment created by on-pull-request-close.yml -->
+
+            ### 📦 Draft Release Created
+
+            Version: \`${versionTag}\`
+
+            > Publish the draft release to trigger the full release workflow (GoReleaser).
+
+            *Merged by: @${actor} on ${currentDate}*`;
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+            }
