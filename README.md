@@ -168,3 +168,60 @@ you may log any of the following and anything else you deem important.
   - Had an important conversation with someone? Log that you had it so you can
     also know when it exactly happened.
 - Log anything!
+
+## AI-Native CLI Design
+
+Logger TXT started life as a shell script. The Go rewrite was partly about
+capabilities — date ranges, type and project filters, reverse scanning so a
+decade-deep log file stays fast — but just as much about a second goal:
+deliberately practising the design of a command-line tool that is genuinely
+good for **both humans and coding agents**.
+
+The self-imposed constraint is the interesting part: **`--help` has to be
+enough.** An agent handed nothing but this binary should reach the right
+command on the first try — no instruction file to load, no skill to install,
+no MCP server wrapping the CLI, no prose in a repo telling it which flag to
+prefer. Everything it needs to use the tool correctly ships inside the tool.
+
+That constraint makes the design loop concrete. Watch an agent use the tool,
+find the spot where it picks a plausible-but-wrong command, then fix the help
+text until a cold read leads somewhere better. The most useful example so far:
+adding `-t`/`-p` filters to both `show` and `search` quietly created a trap.
+`search WORK` and `show -t WORK` now looked interchangeable but weren't — the
+first also matches "work" anywhere in a message body. The agent reasonably
+picked `search`, got plausible results, and had no way to know from the help
+text that it wanted the other one. The fix went into the help strings, not
+into a document telling the agent what to do.
+
+What that produced:
+
+- **Help text that teaches rather than lists.** `--help` on the root command
+  embeds the log entry format and the full file-resolution order, so a single
+  read tells an agent where the data lives and what it will look like.
+  Subcommand examples show their expected output inline, so the format never
+  has to be discovered by trial and error.
+- **Explicit disambiguation of near-identical commands.** `search --help`
+  states outright that `search TYPENAME` is not equivalent to
+  `show -t TYPENAME`, and why.
+- **Documented defaults, not implied ones.** Date-only `--start` begins at
+  00:00, date-only `--end` ends at 23:59, and an active date range overrides
+  the default count of 10 — all spelled out, because an undocumented default
+  is something an agent has to guess at.
+- **No quoting ceremony.** `logger-txt add Had coffee with the team` works
+  unquoted; arguments are joined into the message. Quoting is a reliable
+  source of malformed generated commands.
+- **A non-interactive path for everything.** `delete -y` skips the
+  confirmation prompt, because a blocking prompt is a hung agent.
+- **Composable, greppable output.** One entry per line on stdout, plain text
+  on disk. `logger-txt show | grep MEETING` works — and so does reading the
+  log file directly when the CLI is the wrong tool for the job.
+- **Loud failure on ambiguity.** Passing `--start` without `--end` is an
+  error with a clear message, not a silently guessed range.
+
+Personally, this project is a practice ground for a skill I think is becoming
+essential: building tools that are useful to humans and legible to agents at
+the same time. The two goals overlap far more than they conflict — nearly
+every change made for an agent's benefit made the tool clearer for me too.
+Precise help text, documented defaults and non-interactive escape hatches are
+simply good CLI design. Agents just make the cost of skipping them
+immediately, embarrassingly visible.
