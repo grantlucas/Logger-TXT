@@ -21,9 +21,10 @@ type ReverseLineScanner struct {
 }
 
 // NewReverseLineScanner returns a scanner that reads f from end to start.
+// If f cannot seek to its end, Scan returns false and Err reports why.
 func NewReverseLineScanner(f *os.File) *ReverseLineScanner {
-	offset, _ := f.Seek(0, io.SeekEnd)
-	return &ReverseLineScanner{f: f, offset: offset}
+	offset, err := f.Seek(0, io.SeekEnd)
+	return &ReverseLineScanner{f: f, offset: offset, err: err, done: err != nil}
 }
 
 // Scan advances to the next line (moving backwards through the file).

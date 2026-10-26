@@ -150,3 +150,20 @@ func TestReverseLineScanner_LineStart(t *testing.T) {
 		})
 	}
 }
+
+func TestReverseLineScanner_SeekError(t *testing.T) {
+	// Pipes cannot seek, so the scanner cannot find the end of the input
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Close(); _ = w.Close() })
+
+	s := NewReverseLineScanner(r)
+	if s.Scan() {
+		t.Errorf("Scan() = true, want false")
+	}
+	if s.Err() == nil {
+		t.Error("Err() = nil, want seek error")
+	}
+}
