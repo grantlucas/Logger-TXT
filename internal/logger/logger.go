@@ -29,12 +29,12 @@ func EnsureFile(path string) error {
 // Append formats the entry and appends it as a new line to the file.
 // Creates the file and parent directories if they don't exist.
 func Append(path string, e entry.Entry) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	path, err := createAndResolve(path)
+	if err != nil {
 		return err
 	}
-	path = resolvePath(path)
 	return withLock(path, func() error {
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0)
 		if err != nil {
 			return err
 		}
@@ -52,11 +52,12 @@ func Append(path string, e entry.Entry) error {
 
 // Insert writes the entry into the file in chronological position, just
 // before the first entry whose timestamp is later than e.Time. Lines that are
-// not entries stay with the entry above them.
+// not entries stay with the entry above them. Creates the file and parent
+// directories if they don't exist.
 func Insert(path string, e entry.Entry) error {
-	path = resolvePath(path)
-	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		return Append(path, e)
+	path, err := createAndResolve(path)
+	if err != nil {
+		return err
 	}
 	return withLock(path, func() error {
 		return rewrite(path, func(w io.Writer, src *os.File, size int64) error {
@@ -176,6 +177,17 @@ func withLock(path string, fn func() error) error {
 	}
 	defer func() { _ = os.Remove(lock) }()
 	return fn()
+}
+
+// createAndResolve creates the log if it is missing, then resolves symlinks.
+// Creating it first means every alias of the log, including a symlink whose
+// target did not exist yet, resolves to the same real file and so shares one
+// lock. Creating an existing file is a no-op, so this is safe outside the lock.
+func createAndResolve(path string) (string, error) {
+	if err := EnsureFile(path); err != nil {
+		return "", err
+	}
+	return resolvePath(path), nil
 }
 
 // resolvePath follows symlinks so a rewrite replaces the real log file

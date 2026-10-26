@@ -912,9 +912,9 @@ func TestWriters_ConcurrentWritesAreNotLost(t *testing.T) {
 	}
 }
 
-func TestWriters_RefuseReadOnlyLogAndReleaseLock(t *testing.T) {
+func TestWriters_RefuseUnusableLogAndReleaseLock(t *testing.T) {
 	e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
-	tests := []struct {
+	ops := []struct {
 		name string
 		op   func(path string) error
 	}{
@@ -922,20 +922,31 @@ func TestWriters_RefuseReadOnlyLogAndReleaseLock(t *testing.T) {
 		{"Insert", func(p string) error { return logger.Insert(p, e) }},
 		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
-			path := filepath.Join(dir, "log.txt")
-			if err := os.WriteFile(path, []byte("20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"), 0444); err != nil {
-				t.Fatal(err)
-			}
+	// Writers must read the log too (insertion point, trailing newline), so a
+	// write-only log is refused as well as a read-only one
+	perms := []struct {
+		name string
+		perm os.FileMode
+	}{
+		{"read-only", 0444},
+		{"write-only", 0200},
+	}
+	for _, p := range perms {
+		for _, tt := range ops {
+			t.Run(p.name+"/"+tt.name, func(t *testing.T) {
+				dir := t.TempDir()
+				path := filepath.Join(dir, "log.txt")
+				if err := os.WriteFile(path, []byte("20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"), p.perm); err != nil {
+					t.Fatal(err)
+				}
 
-			if err := tt.op(path); err == nil {
-				t.Fatalf("%s() expected error for read-only log, got nil", tt.name)
-			}
-			if _, err := os.Stat(path + ".lock"); !os.IsNotExist(err) {
-				t.Errorf("lock file left behind after failure (stat err %v)", err)
-			}
-		})
+				if err := tt.op(path); err == nil {
+					t.Fatalf("%s() expected error for %s log, got nil", tt.name, p.name)
+				}
+				if _, err := os.Stat(path + ".lock"); !os.IsNotExist(err) {
+					t.Errorf("lock file left behind after failure (stat err %v)", err)
+				}
+			})
+		}
 	}
 }
