@@ -687,3 +687,103 @@ func TestSearch_WithFilterSkipsUnparseable(t *testing.T) {
 		t.Fatalf("Search() returned %d results, want 2 (unparseable skipped)", len(got))
 	}
 }
+
+func TestInsert(t *testing.T) {
+	est := time.FixedZone("EST", -5*3600)
+	at := time.Date(2026, 10, 21, 12, 0, 0, 0, est)
+	e := entry.Entry{Time: at, Message: "B"}
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "between existing entries",
+			content: "20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "before all entries",
+			content: "22/10/26 09:00 -0500 - C\n23/10/26 09:00 -0500 - D\n",
+			want:    "21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n23/10/26 09:00 -0500 - D\n",
+		},
+		{
+			name:    "after all entries",
+			content: "20/10/26 09:00 -0500 - A\n",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:    "after entries in the same minute",
+			content: "21/10/26 12:00 -0500 - A1\n21/10/26 12:00 -0500 - A2\n22/10/26 09:00 -0500 - C\n",
+			want:    "21/10/26 12:00 -0500 - A1\n21/10/26 12:00 -0500 - A2\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "passes over unparseable lines",
+			content: "20/10/26 09:00 -0500 - A\nnot an entry\n22/10/26 09:00 -0500 - C\n",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\nnot an entry\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "CRLF line endings",
+			content: "20/10/26 09:00 -0500 - A\r\n22/10/26 09:00 -0500 - C\r\n",
+			want:    "20/10/26 09:00 -0500 - A\r\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\r\n",
+		},
+		{
+			// 12:30 -0400 is 16:30 UTC, earlier than 12:00 -0500 (17:00 UTC)
+			name:    "compares instants across offsets",
+			content: "21/10/26 12:30 -0400 - A\n21/10/26 13:30 -0400 - C\n",
+			want:    "21/10/26 12:30 -0400 - A\n21/10/26 12:00 -0500 - B\n21/10/26 13:30 -0400 - C\n",
+		},
+		{
+			name:    "empty file",
+			content: "",
+			want:    "21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name: "missing file",
+			want: "21/10/26 12:00 -0500 - B\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "log.txt")
+			if tt.name != "missing file" {
+				if err := os.WriteFile(path, []byte(tt.content), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if err := logger.Insert(path, e); err != nil {
+				t.Fatalf("Insert() error = %v", err)
+			}
+
+			got, _ := os.ReadFile(path)
+			if string(got) != tt.want {
+				t.Errorf("file content = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInsert_ErrorOnUnwritablePath(t *testing.T) {
+	e := entry.Entry{Time: testTime(), Message: "test"}
+	tests := []struct {
+		name string
+		path func(t *testing.T) string
+	}{
+		{"directory", func(t *testing.T) string { return t.TempDir() }},
+		{"read-only file", func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "log.txt")
+			if err := os.WriteFile(path, []byte("line1\n"), 0444); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := logger.Insert(tt.path(t), e); err == nil {
+				t.Fatal("Insert() expected error, got nil")
+			}
+		})
+	}
+}

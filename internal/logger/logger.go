@@ -2,7 +2,9 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +38,41 @@ func Append(path string, e entry.Entry) error {
 	_, err = f.WriteString(e.Format() + "\n")
 	if cerr := f.Close(); err == nil {
 		err = cerr
+	}
+	return err
+}
+
+// Insert writes the entry into the file in chronological position, after the
+// last entry whose timestamp is not later than e.Time. Only the lines after
+// the insertion point are rewritten.
+func Insert(path string, e entry.Entry) error {
+	f, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if errors.Is(err, fs.ErrNotExist) {
+		return Append(path, e)
+	}
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+
+	s := NewReverseLineScanner(f)
+	size := s.offset // scanner starts positioned at EOF
+	insertAt := size
+	for s.Scan() {
+		existing, err := entry.ParseEntry(s.Text())
+		if err == nil && !existing.Time.After(e.Time) {
+			break
+		}
+		insertAt = s.LineStart()
+	}
+
+	tail := make([]byte, size-insertAt)
+	err = s.Err()
+	if err == nil {
+		_, err = f.ReadAt(tail, insertAt)
+	}
+	if err == nil {
+		_, err = f.WriteAt(append([]byte(e.Format()+"\n"), tail...), insertAt)
 	}
 	return err
 }
