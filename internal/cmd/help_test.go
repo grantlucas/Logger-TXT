@@ -61,6 +61,7 @@ func TestDeleteHelp(t *testing.T) {
 		"uppercase",
 		"only removes the last line",
 		"not necessarily the most",
+		"nothing is deleted",
 		"logger-txt delete",
 	})
 }

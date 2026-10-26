@@ -427,7 +427,7 @@ func TestDeleteLast_RemovesAndReturnsLastLine(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"line1", "line2", "line3"})
 
-	got, err := logger.DeleteLast(path)
+	got, err := logger.DeleteLast(path, "line3")
 	if err != nil {
 		t.Fatalf("DeleteLast() error = %v", err)
 	}
@@ -443,12 +443,25 @@ func TestDeleteLast_RemovesAndReturnsLastLine(t *testing.T) {
 	}
 }
 
+func TestDeleteLast_RefusesWhenLastLineChanged(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.txt")
+	writeLines(t, path, []string{"line1", "line2", "line3"})
+
+	_, err := logger.DeleteLast(path, "line2")
+	if err == nil || !strings.Contains(err.Error(), "changed") {
+		t.Fatalf("DeleteLast() error = %v, want one saying the last line changed", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "line1\nline2\nline3\n" {
+		t.Errorf("file content = %q, want unchanged", got)
+	}
+}
+
 func TestDeleteLast_SingleLineFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"only line"})
 
-	got, err := logger.DeleteLast(path)
+	got, err := logger.DeleteLast(path, "only line")
 	if err != nil {
 		t.Fatalf("DeleteLast() error = %v", err)
 	}
@@ -469,7 +482,7 @@ func TestDeleteLast_ErrorOnEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := logger.DeleteLast(path)
+	_, err := logger.DeleteLast(path, "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for empty file, got nil")
 	}
@@ -484,14 +497,14 @@ func TestDeleteLast_ErrorOnWriteFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := logger.DeleteLast(path)
+	_, err := logger.DeleteLast(path, "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for read-only file, got nil")
 	}
 }
 
 func TestDeleteLast_ErrorOnNonExistentFile(t *testing.T) {
-	_, err := logger.DeleteLast("/nonexistent/log.txt")
+	_, err := logger.DeleteLast("/nonexistent/log.txt", "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for non-existent file, got nil")
 	}
@@ -883,7 +896,7 @@ func TestWriters_PreserveLogFile(t *testing.T) {
 	}{
 		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return logger.Insert(p, e) }},
-		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p, "22/10/26 09:00 -0500 - C"); return err }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -969,7 +982,7 @@ func TestWriters_RefuseUnusableLogAndReleaseLock(t *testing.T) {
 	}{
 		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return logger.Insert(p, e) }},
-		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p, "22/10/26 09:00 -0500 - C"); return err }},
 	}
 	// Writers must read the log too (insertion point, trailing newline), so a
 	// write-only log is refused as well as a read-only one

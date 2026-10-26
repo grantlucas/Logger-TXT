@@ -360,13 +360,15 @@ func scanRange(s *ReverseLineScanner, start, end time.Time, fn func(entry.Entry)
 	return collected, nil
 }
 
-// DeleteLast removes the last line from the file and returns it.
-func DeleteLast(path string) (string, error) {
+// DeleteLast removes the last line from the file and returns it. It refuses,
+// leaving the file unchanged, unless the last line is still expected: the
+// line the caller showed for confirmation before another writer could add one.
+func DeleteLast(path, expected string) (string, error) {
 	path = resolvePath(path)
 	var deleted string
 	err := withLock(path, func() error {
 		return rewrite(path, func(w io.Writer, src *os.File, _ int64) error {
-			return copyWithoutLastLine(w, src, &deleted)
+			return copyWithoutLastLine(w, src, expected, &deleted)
 		})
 	})
 	if err != nil {
@@ -376,8 +378,8 @@ func DeleteLast(path string) (string, error) {
 }
 
 // copyWithoutLastLine copies src to w without its last line, which it stores
-// in deleted.
-func copyWithoutLastLine(w io.Writer, src *os.File, deleted *string) error {
+// in deleted, provided that line is expected.
+func copyWithoutLastLine(w io.Writer, src *os.File, expected string, deleted *string) error {
 	data, err := io.ReadAll(src)
 	content := strings.TrimRight(string(data), "\r\n")
 	if err == nil && content == "" {
@@ -387,7 +389,11 @@ func copyWithoutLastLine(w io.Writer, src *os.File, deleted *string) error {
 		return err
 	}
 	idx := strings.LastIndex(content, "\n")
-	*deleted = content[idx+1:]
+	last := content[idx+1:]
+	if last != expected {
+		return fmt.Errorf("the last line changed since it was shown, so nothing was deleted; run delete again")
+	}
+	*deleted = last
 	_, err = io.WriteString(w, content[:idx+1])
 	return err
 }

@@ -182,7 +182,9 @@ const deleteLong = `Remove the last entry from the log file.
 
 The entry is shown and you are asked to confirm before it is deleted. You must
 type an uppercase "Y" to confirm — any other input cancels the operation.
-Use --yes (-y) to skip the prompt for scripting.
+Use --yes (-y) to skip the prompt for scripting. If another entry is added
+while the prompt waits, nothing is deleted and you are asked to run delete
+again, so the line removed is always the one that was shown.
 
 This command only removes the last line of the log file. To delete an
 older entry, edit the file directly. Entries backfilled with "add --at" are

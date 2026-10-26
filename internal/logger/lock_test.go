@@ -24,7 +24,7 @@ func TestWriters_FailWhenLockIsHeld(t *testing.T) {
 	}{
 		{"Append", func(p string) error { return Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return Insert(p, e) }},
-		{"DeleteLast", func(p string) error { _, err := DeleteLast(p); return err }},
+		{"DeleteLast", func(p string) error { _, err := DeleteLast(p, "22/10/26 09:00 -0500 - C"); return err }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
