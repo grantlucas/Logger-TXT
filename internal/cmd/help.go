@@ -36,7 +36,17 @@ const rootExample = `  # Add a simple entry
 const addLong = `Add a new timestamped entry to the log file.
 
 The -t (type) and -p (project) flags are automatically uppercased, so
-"-t meeting" becomes "MEETING" in the log. The message is logged as-is.`
+"-t meeting" becomes "MEETING" in the log. The message is logged as-is.
+
+Use --at to backfill an entry at a past time instead of now. The value uses
+DD/MM/YY HH:MM format (quote it on the CLI) and must include a time; date-only
+values and future times are rejected. The time is read in the local time zone
+with the UTC offset that applied on that date. The entry is inserted in
+chronological order, after any existing entries with the same or an earlier
+timestamp, and the confirmation echoes the timestamp that was written.
+
+A backfilled entry is usually not the last line of the file, so "delete"
+removes whatever entry is last — not the entry you backfilled.`
 
 const addExample = `  # Simple message
   logger-txt add Had coffee with the team
@@ -52,7 +62,11 @@ const addExample = `  # Simple message
 
   # With both type and project
   logger-txt add -t dev -p acme Fixed login bug
-  # => 04/03/26 14:30 -0500 - DEV (ACME) - Fixed login bug`
+  # => 04/03/26 14:30 -0500 - DEV (ACME) - Fixed login bug
+
+  # Backfill an entry at a past time
+  logger-txt add --at "02/03/26 09:15" -t meeting Sprint planning with the team
+  # => 02/03/26 09:15 -0500 - MEETING - Sprint planning with the team`
 
 const showLong = `Display the most recent entries from the log file, newest last.
 
@@ -170,7 +184,9 @@ type an uppercase "Y" to confirm — any other input cancels the operation.
 Use --yes (-y) to skip the prompt for scripting.
 
 This command only removes the last line of the log file. To delete an
-older entry, edit the file directly.`
+older entry, edit the file directly. Entries backfilled with "add --at" are
+inserted in chronological order, so the last line is not necessarily the most
+recently added entry.`
 
 const deleteExample = `  # Delete with interactive confirmation
   logger-txt delete

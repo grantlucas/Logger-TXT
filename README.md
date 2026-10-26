@@ -48,6 +48,17 @@ logger-txt add -p project "Entry with a project"
 logger-txt add -t personal -p project "Entry with both"
 ```
 
+To backfill an entry you missed, pass `--at` with a past date and time
+(`DD/MM/YY HH:MM`). The entry is inserted in chronological order rather than
+appended, so date-range queries stay correct:
+
+```bash
+logger-txt add --at "02/03/26 09:15" -t meeting "Sprint planning with the team"
+```
+
+Because a backfilled entry is usually not the last line, `delete` won't remove
+it. Edit the file directly instead.
+
 ### Showing recent entries
 
 Use `show` to browse entries by type or project. For free-text keyword

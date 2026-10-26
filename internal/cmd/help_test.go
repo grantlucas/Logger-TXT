@@ -32,6 +32,10 @@ func TestAddHelp(t *testing.T) {
 	assertHelpContains(t, []string{"add", "--help"}, []string{
 		"automatically uppercase",
 		"logger-txt add",
+		"--at",
+		"chronological order",
+		"must include a time",
+		"not the entry you backfilled",
 	})
 }
 
@@ -55,6 +59,7 @@ func TestDeleteHelp(t *testing.T) {
 	assertHelpContains(t, []string{"delete", "--help"}, []string{
 		"uppercase",
 		"only removes the last line",
+		"not necessarily the most",
 		"logger-txt delete",
 	})
 }
