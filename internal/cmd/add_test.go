@@ -198,6 +198,13 @@ func TestAddCmd_At(t *testing.T) {
 			wantFile: existing,
 		},
 		{
+			// e.g. --at "$WHEN" with WHEN unset must not log at the current time
+			name:     "rejects empty value",
+			args:     []string{"add", "--at", "", "X"},
+			wantErr:  "invalid --at value",
+			wantFile: existing,
+		},
+		{
 			name:     "rejects unparseable time",
 			args:     []string{"add", "--at", "yesterday 3pm", "X"},
 			wantErr:  "invalid --at value",

@@ -22,6 +22,7 @@ func newAddCmd() *cobra.Command {
 			typeName, _ := cmd.Flags().GetString("type")
 			project, _ := cmd.Flags().GetString("project")
 			at, _ := cmd.Flags().GetString("at")
+			backfill := cmd.Flags().Changed("at")
 			path := config.ResolveFilePath(filePath)
 
 			typeName = strings.ToUpper(typeName)
@@ -37,7 +38,7 @@ func newAddCmd() *cobra.Command {
 
 			// Backfilled entries are inserted in chronological position
 			write := logger.Append
-			if at != "" {
+			if backfill {
 				t, err := entry.ParseAtTime(at, e.Time.Location(), e.Time)
 				if err != nil {
 					return err
@@ -59,7 +60,7 @@ func newAddCmd() *cobra.Command {
 			} else if project != "" {
 				confirmation = fmt.Sprintf("%q logged in the project %s", message, project)
 			}
-			if at != "" {
+			if backfill {
 				confirmation += " at " + e.Time.Format(entry.TimeLayout)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), confirmation)
