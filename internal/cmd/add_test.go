@@ -163,3 +163,158 @@ func TestAddCmd_SimpleMessage(t *testing.T) {
 		t.Errorf("unexpected file content: %q", content)
 	}
 }
+
+func TestAddCmd_At(t *testing.T) {
+	const existing = "03/03/26 09:00 -0500 - A\n05/03/26 09:00 -0500 - C\n"
+	tests := []struct {
+		name     string
+		args     []string
+		wantOut  string
+		wantErr  string
+		wantFile string
+	}{
+		{
+			name:     "inserts between existing entries",
+			args:     []string{"add", "--at", "04/03/26 14:30", "-t", "work", "Reviewed", "budget"},
+			wantOut:  `"Reviewed budget" logged under the type WORK at 04/03/26 14:30 -0500`,
+			wantFile: "03/03/26 09:00 -0500 - A\n04/03/26 14:30 -0500 - WORK - Reviewed budget\n05/03/26 09:00 -0500 - C\n",
+		},
+		{
+			name:     "appends when newest",
+			args:     []string{"add", "--at", "06/03/26 08:15", "D"},
+			wantOut:  `"D" logged at 06/03/26 08:15 -0500`,
+			wantFile: existing + "06/03/26 08:15 -0500 - D\n",
+		},
+		{
+			name:     "rejects date without time",
+			args:     []string{"add", "--at", "04/03/26", "X"},
+			wantErr:  "--at requires a time",
+			wantFile: existing,
+		},
+		{
+			name:     "rejects future time",
+			args:     []string{"add", "--at", "01/01/68 10:00", "X"},
+			wantErr:  "is in the future",
+			wantFile: existing,
+		},
+		{
+			// e.g. --at "$WHEN" with WHEN unset must not log at the current time
+			name:     "rejects empty value",
+			args:     []string{"add", "--at", "", "X"},
+			wantErr:  "invalid --at value",
+			wantFile: existing,
+		},
+		{
+			name:     "rejects unparseable time",
+			args:     []string{"add", "--at", "yesterday 3pm", "X"},
+			wantErr:  "invalid --at value",
+			wantFile: existing,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logFile := writeLogFile(t, t.TempDir(), existing)
+
+			out, _, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("error = %v, want containing %q", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if !strings.Contains(out, tt.wantOut) {
+				t.Errorf("output = %q, want containing %q", out, tt.wantOut)
+			}
+			data, _ := os.ReadFile(logFile)
+			if string(data) != tt.wantFile {
+				t.Errorf("file content = %q, want %q", data, tt.wantFile)
+			}
+		})
+	}
+}
+
+func TestAddCmd_LockFileCannotBeCreated(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantOut  string
+		wantWarn bool
+		wantErr  bool
+	}{
+		{
+			name:     "plain add warns and appends",
+			args:     []string{"add", "New entry"},
+			wantOut:  `"New entry" logged`,
+			wantWarn: true,
+		},
+		{
+			// Backfilling rewrites the log, which needs the directory too
+			name:    "backfill fails",
+			args:    []string{"add", "--at", "04/03/26 10:00", "New entry"},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			logFile := writeLogFile(t, dir, "03/03/26 09:00 -0500 - Existing entry\n")
+			if err := os.Chmod(dir, 0555); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0755) })
+			lock := logFile + ".lock"
+
+			out, errOut, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), lock) {
+					t.Fatalf("error = %v, want one naming %s", err, lock)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(out, tt.wantOut) {
+				t.Errorf("output = %q, want containing %q", out, tt.wantOut)
+			}
+			if tt.wantWarn && (!strings.Contains(errOut, "warning:") || !strings.Contains(errOut, lock)) {
+				t.Errorf("stderr = %q, want a warning naming %s", errOut, lock)
+			}
+			if data, _ := os.ReadFile(logFile); !strings.Contains(string(data), "New entry") {
+				t.Errorf("entry not written: %q", data)
+			}
+		})
+	}
+}
+
+func TestAddCmd_RejectsLineBreaks(t *testing.T) {
+	const existing = "03/03/26 09:00 -0500 - A\n"
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{"newline in message", []string{"add", "notes\n01/01/20 00:00 -0400 - forged"}, "message must be a single line"},
+		{"newline in backfilled message", []string{"add", "--at", "04/03/26 10:00", "notes\nmore"}, "message must be a single line"},
+		{"carriage return in type", []string{"add", "-t", "work\rx", "m"}, "type must be a single line"},
+		{"newline in project", []string{"add", "-p", "api\nx", "m"}, "project must be a single line"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logFile := writeLogFile(t, t.TempDir(), existing)
+
+			_, _, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+			}
+			if data, _ := os.ReadFile(logFile); string(data) != existing {
+				t.Errorf("file content = %q, want unchanged", data)
+			}
+		})
+	}
+}

@@ -1,6 +1,7 @@
 package entry
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -253,6 +254,34 @@ func TestParseEntryErrors(t *testing.T) {
 			_, err := ParseEntry(tt.line)
 			if err == nil {
 				t.Errorf("ParseEntry(%q) expected error, got nil", tt.line)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		e       Entry
+		wantErr string
+	}{
+		{"single-line fields", Entry{Type: "WORK", Project: "API", Message: "Fixed a bug"}, ""},
+		{"newline in message", Entry{Message: "notes\n01/01/20 00:00 -0400 - forged"}, "message must be a single line"},
+		{"carriage return in message", Entry{Message: "first\rsecond"}, "message must be a single line"},
+		{"newline in type", Entry{Type: "WORK\nX", Message: "m"}, "type must be a single line"},
+		{"newline in project", Entry{Project: "API\r\nX", Message: "m"}, "project must be a single line"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.e.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("Validate() error = %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Validate() error = %v, want containing %q", err, tt.wantErr)
 			}
 		})
 	}

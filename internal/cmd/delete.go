@@ -53,13 +53,15 @@ func newDeleteCmd() *cobra.Command {
 				}
 			}
 
-			_, err = logger.DeleteLast(path)
+			// Refuses if another writer added a line while the prompt waited
+			deleted, err := logger.DeleteLast(path, lastLine)
 			if err != nil {
 				return err
 			}
 
 			fmt.Fprintln(out)
-			fmt.Fprintln(out, "Deleted last line from file")
+			fmt.Fprintln(out, "Deleted last line from file:")
+			fmt.Fprintln(out, deleted)
 
 			return nil
 		},

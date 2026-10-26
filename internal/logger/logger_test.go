@@ -1,8 +1,13 @@
 package logger_test
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -90,7 +95,7 @@ func TestAppend_WritesToNewFile(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	e := entry.Entry{Time: testTime(), Message: "Grabbed a coffee"}
 
-	err := logger.Append(path, e)
+	err := logger.Append(path, e, io.Discard)
 	if err != nil {
 		t.Fatalf("Append() error = %v", err)
 	}
@@ -108,10 +113,10 @@ func TestAppend_AppendsToExistingFile(t *testing.T) {
 	e1 := entry.Entry{Time: testTime(), Message: "First entry"}
 	e2 := entry.Entry{Time: testTime(), Type: "WORK", Message: "Second entry"}
 
-	if err := logger.Append(path, e1); err != nil {
+	if err := logger.Append(path, e1, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := logger.Append(path, e2); err != nil {
+	if err := logger.Append(path, e2, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -122,8 +127,25 @@ func TestAppend_AppendsToExistingFile(t *testing.T) {
 	}
 }
 
+func TestAppend_StartsNewLineWhenFileLacksTrailingNewline(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.txt")
+	if err := os.WriteFile(path, []byte("22/02/26 09:00 -0500 - Edited by hand"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := logger.Append(path, entry.Entry{Time: testTime(), Message: "Next"}, io.Discard); err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+
+	got, _ := os.ReadFile(path)
+	want := "22/02/26 09:00 -0500 - Edited by hand\n22/02/26 10:30 -0500 - Next\n"
+	if string(got) != want {
+		t.Fatalf("file content = %q, want %q", got, want)
+	}
+}
+
 func TestAppend_ErrorOnUnwritablePath(t *testing.T) {
-	err := logger.Append("/dev/null/impossible/log.txt", entry.Entry{Message: "test"})
+	err := logger.Append("/dev/null/impossible/log.txt", entry.Entry{Message: "test"}, io.Discard)
 	if err == nil {
 		t.Fatal("Append() expected error for unwritable path, got nil")
 	}
@@ -136,9 +158,56 @@ func TestAppend_ErrorOnReadOnlyDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := logger.Append(filepath.Join(readOnly, "log.txt"), entry.Entry{Message: "test"})
+	err := logger.Append(filepath.Join(readOnly, "log.txt"), entry.Entry{Message: "test"}, io.Discard)
 	if err == nil {
 		t.Fatal("Append() expected error for read-only directory, got nil")
+	}
+}
+
+func TestAppend_WarnsAndAppendsWhenLockFileCannotBeCreated(t *testing.T) {
+	tests := []struct {
+		name     string
+		dirPerm  os.FileMode
+		wantWarn bool
+	}{
+		{"lock file created", 0755, false},
+		{"directory not writable", 0555, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "log.txt")
+			const existing = "20/10/26 09:00 -0500 - A\n"
+			if err := os.WriteFile(path, []byte(existing), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(dir, tt.dirPerm); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0755) })
+
+			var warn bytes.Buffer
+			e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+			if err := logger.Append(path, e, &warn); err != nil {
+				t.Fatalf("Append() error = %v", err)
+			}
+
+			want := existing + "21/10/26 12:00 -0500 - B\n"
+			if got, _ := os.ReadFile(path); string(got) != want {
+				t.Errorf("file content = %q, want %q", got, want)
+			}
+			lock := path + ".lock"
+			if tt.wantWarn {
+				if !strings.Contains(warn.String(), "warning:") || !strings.Contains(warn.String(), lock) {
+					t.Errorf("warning = %q, want one naming %s", warn.String(), lock)
+				}
+			} else if warn.Len() != 0 {
+				t.Errorf("unexpected warning: %q", warn.String())
+			}
+		})
 	}
 }
 
@@ -358,7 +427,7 @@ func TestDeleteLast_RemovesAndReturnsLastLine(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"line1", "line2", "line3"})
 
-	got, err := logger.DeleteLast(path)
+	got, err := logger.DeleteLast(path, "line3")
 	if err != nil {
 		t.Fatalf("DeleteLast() error = %v", err)
 	}
@@ -374,12 +443,25 @@ func TestDeleteLast_RemovesAndReturnsLastLine(t *testing.T) {
 	}
 }
 
+func TestDeleteLast_RefusesWhenLastLineChanged(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.txt")
+	writeLines(t, path, []string{"line1", "line2", "line3"})
+
+	_, err := logger.DeleteLast(path, "line2")
+	if err == nil || !strings.Contains(err.Error(), "changed") {
+		t.Fatalf("DeleteLast() error = %v, want one saying the last line changed", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "line1\nline2\nline3\n" {
+		t.Errorf("file content = %q, want unchanged", got)
+	}
+}
+
 func TestDeleteLast_SingleLineFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.txt")
 	writeLines(t, path, []string{"only line"})
 
-	got, err := logger.DeleteLast(path)
+	got, err := logger.DeleteLast(path, "only line")
 	if err != nil {
 		t.Fatalf("DeleteLast() error = %v", err)
 	}
@@ -400,7 +482,7 @@ func TestDeleteLast_ErrorOnEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := logger.DeleteLast(path)
+	_, err := logger.DeleteLast(path, "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for empty file, got nil")
 	}
@@ -415,14 +497,14 @@ func TestDeleteLast_ErrorOnWriteFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := logger.DeleteLast(path)
+	_, err := logger.DeleteLast(path, "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for read-only file, got nil")
 	}
 }
 
 func TestDeleteLast_ErrorOnNonExistentFile(t *testing.T) {
-	_, err := logger.DeleteLast("/nonexistent/log.txt")
+	_, err := logger.DeleteLast("/nonexistent/log.txt", "")
 	if err == nil {
 		t.Fatal("DeleteLast() expected error for non-existent file, got nil")
 	}
@@ -685,5 +767,248 @@ func TestSearch_WithFilterSkipsUnparseable(t *testing.T) {
 
 	if len(got) != 2 {
 		t.Fatalf("Search() returned %d results, want 2 (unparseable skipped)", len(got))
+	}
+}
+
+func TestInsert(t *testing.T) {
+	est := time.FixedZone("EST", -5*3600)
+	at := time.Date(2026, 10, 21, 12, 0, 0, 0, est)
+	e := entry.Entry{Time: at, Message: "B"}
+	tests := []struct {
+		name    string
+		content string
+		noFile  bool
+		want    string
+	}{
+		{
+			name:    "between existing entries",
+			content: "20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "before all entries",
+			content: "22/10/26 09:00 -0500 - C\n23/10/26 09:00 -0500 - D\n",
+			want:    "21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n23/10/26 09:00 -0500 - D\n",
+		},
+		{
+			name:    "after all entries",
+			content: "20/10/26 09:00 -0500 - A\n",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:    "after entries in the same minute",
+			content: "21/10/26 12:00 -0500 - A1\n21/10/26 12:00 -0500 - A2\n22/10/26 09:00 -0500 - C\n",
+			want:    "21/10/26 12:00 -0500 - A1\n21/10/26 12:00 -0500 - A2\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "keeps non-entry lines with the entry above them",
+			content: "20/10/26 09:00 -0500 - A\nnote about A\n22/10/26 09:00 -0500 - C\n",
+			want:    "20/10/26 09:00 -0500 - A\nnote about A\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "keeps a header above the earliest entry",
+			content: "# Work log\n22/10/26 09:00 -0500 - C\n",
+			want:    "# Work log\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			// Blank lines belong to the entry above, same as mid-file
+			name:    "after trailing blank lines",
+			content: "20/10/26 09:00 -0500 - A\n\n\n",
+			want:    "20/10/26 09:00 -0500 - A\n\n\n21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:    "last line has no trailing newline",
+			content: "20/10/26 09:00 -0500 - A",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:    "CRLF line endings",
+			content: "20/10/26 09:00 -0500 - A\r\n22/10/26 09:00 -0500 - C\r\n",
+			want:    "20/10/26 09:00 -0500 - A\r\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\r\n",
+		},
+		{
+			// 12:30 -0400 is 16:30 UTC, earlier than 12:00 -0500 (17:00 UTC)
+			name:    "compares instants across offsets",
+			content: "21/10/26 12:30 -0400 - A\n21/10/26 13:30 -0400 - C\n",
+			want:    "21/10/26 12:30 -0400 - A\n21/10/26 12:00 -0500 - B\n21/10/26 13:30 -0400 - C\n",
+		},
+		{
+			name:    "empty file",
+			content: "",
+			want:    "21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:   "missing file",
+			noFile: true,
+			want:   "21/10/26 12:00 -0500 - B\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "log.txt")
+			if !tt.noFile {
+				if err := os.WriteFile(path, []byte(tt.content), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if err := logger.Insert(path, e); err != nil {
+				t.Fatalf("Insert() error = %v", err)
+			}
+
+			got, _ := os.ReadFile(path)
+			if string(got) != tt.want {
+				t.Errorf("file content = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInsert_ErrorOnUnwritablePath(t *testing.T) {
+	e := entry.Entry{Time: testTime(), Message: "test"}
+	tests := []struct {
+		name string
+		path func(t *testing.T) string
+	}{
+		{"directory", func(t *testing.T) string { return t.TempDir() }},
+		{"read-only file", func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "log.txt")
+			if err := os.WriteFile(path, []byte("line1\n"), 0444); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := logger.Insert(tt.path(t), e); err == nil {
+				t.Fatal("Insert() expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestWriters_PreserveLogFile(t *testing.T) {
+	e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+	tests := []struct {
+		name string
+		op   func(path string) error
+	}{
+		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
+		{"Insert", func(p string) error { return logger.Insert(p, e) }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p, "22/10/26 09:00 -0500 - C"); return err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "real.txt")
+			content := "20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"
+			if err := os.WriteFile(target, []byte(content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			link := filepath.Join(dir, "log.txt")
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tt.op(link); err != nil {
+				t.Fatalf("%s() error = %v", tt.name, err)
+			}
+
+			if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+				t.Errorf("log path is no longer a symlink (err %v)", err)
+			}
+			if got, _ := os.ReadFile(target); string(got) == content {
+				t.Error("symlink target was not updated")
+			}
+			if fi, _ := os.Stat(target); fi.Mode().Perm() != 0600 {
+				t.Errorf("permissions = %v, want 0600", fi.Mode().Perm())
+			}
+			if files, _ := os.ReadDir(dir); len(files) != 2 {
+				t.Errorf("directory has %d files, want only the log and its symlink", len(files))
+			}
+		})
+	}
+}
+
+func TestWriters_ConcurrentWritesAreNotLost(t *testing.T) {
+	est := time.FixedZone("EST", -5*3600)
+	path := filepath.Join(t.TempDir(), "log.txt")
+	if err := os.WriteFile(path, []byte("20/10/26 00:00 -0500 - start\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Backfills land between start and the appends, which are all later
+	const inserts, appends = 30, 10
+	var wg sync.WaitGroup
+	errs := make(chan error, inserts+appends)
+	for i := range inserts {
+		wg.Go(func() {
+			at := time.Date(2026, 10, 21, 0, i, 0, 0, est)
+			errs <- logger.Insert(path, entry.Entry{Time: at, Message: fmt.Sprintf("insert %02d", i)})
+		})
+	}
+	for i := range appends {
+		wg.Go(func() {
+			at := time.Date(2026, 10, 22, 0, 0, 0, 0, est)
+			errs <- logger.Append(path, entry.Entry{Time: at, Message: fmt.Sprintf("append %02d", i)}, io.Discard)
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("write error = %v", err)
+		}
+	}
+
+	data, _ := os.ReadFile(path)
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(lines) != 1+inserts+appends {
+		t.Fatalf("got %d lines, want %d:\n%s", len(lines), 1+inserts+appends, data)
+	}
+	for i := range inserts {
+		if want := fmt.Sprintf("insert %02d", i); !strings.HasSuffix(lines[1+i], want) {
+			t.Errorf("line %d = %q, want %q", 1+i, lines[1+i], want)
+		}
+	}
+}
+
+func TestWriters_RefuseUnusableLogAndReleaseLock(t *testing.T) {
+	e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+	ops := []struct {
+		name string
+		op   func(path string) error
+	}{
+		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
+		{"Insert", func(p string) error { return logger.Insert(p, e) }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p, "22/10/26 09:00 -0500 - C"); return err }},
+	}
+	// Writers must read the log too (insertion point, trailing newline), so a
+	// write-only log is refused as well as a read-only one
+	perms := []struct {
+		name string
+		perm os.FileMode
+	}{
+		{"read-only", 0444},
+		{"write-only", 0200},
+	}
+	for _, p := range perms {
+		for _, tt := range ops {
+			t.Run(p.name+"/"+tt.name, func(t *testing.T) {
+				dir := t.TempDir()
+				path := filepath.Join(dir, "log.txt")
+				if err := os.WriteFile(path, []byte("20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"), p.perm); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := tt.op(path); err == nil {
+					t.Fatalf("%s() expected error for %s log, got nil", tt.name, p.name)
+				}
+				if _, err := os.Stat(path + ".lock"); !os.IsNotExist(err) {
+					t.Errorf("lock file left behind after failure (stat err %v)", err)
+				}
+			})
+		}
 	}
 }

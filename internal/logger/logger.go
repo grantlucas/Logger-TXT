@@ -2,7 +2,10 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,20 +27,206 @@ func EnsureFile(path string) error {
 }
 
 // Append formats the entry and appends it as a new line to the file.
-// Creates the file and parent directories if they don't exist.
-func Append(path string, e entry.Entry) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+// Creates the file and parent directories if they don't exist. If the log's
+// directory doesn't allow creating the lock file, it appends without the lock
+// and writes a warning to warn. A single append is safe unlocked, and the
+// writers that need the lock can't rewrite a log in that directory anyway.
+func Append(path string, e entry.Entry, warn io.Writer) error {
+	path, err := createAndResolve(path)
 	if err != nil {
 		return err
 	}
-	_, err = f.WriteString(e.Format() + "\n")
-	if cerr := f.Close(); err == nil {
-		err = cerr
+	write := func() error {
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0)
+		if err != nil {
+			return err
+		}
+		line := e.Format() + "\n"
+		if size, _ := f.Seek(0, io.SeekEnd); endsWithoutNewline(f, size) {
+			line = "\n" + line
+		}
+		_, err = f.WriteString(line)
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+		return err
+	}
+	err = withLock(path, write)
+	var lerr *lockError
+	if errors.As(err, &lerr) && errors.Is(lerr.err, fs.ErrPermission) {
+		_, _ = fmt.Fprintf(warn, "warning: %v; appended without the lock\n", lerr)
+		return write()
 	}
 	return err
+}
+
+// Insert writes the entry into the file in chronological position, just
+// before the first entry whose timestamp is later than e.Time. Lines that are
+// not entries stay with the entry above them. Creates the file and parent
+// directories if they don't exist.
+func Insert(path string, e entry.Entry) error {
+	path, err := createAndResolve(path)
+	if err != nil {
+		return err
+	}
+	return withLock(path, func() error {
+		return rewrite(path, func(w io.Writer, src *os.File, size int64) error {
+			return copyWithInsert(w, src, size, e)
+		})
+	})
+}
+
+// copyWithInsert copies src to w with e inserted in chronological position.
+func copyWithInsert(w io.Writer, src *os.File, size int64, e entry.Entry) error {
+	insertAt, err := insertOffset(src, size, e.Time)
+	line := e.Format() + "\n"
+	if insertAt == size && endsWithoutNewline(src, size) {
+		line = "\n" + line
+	}
+	if err == nil {
+		_, err = io.Copy(w, io.NewSectionReader(src, 0, insertAt))
+	}
+	if err == nil {
+		_, err = io.WriteString(w, line)
+	}
+	if err == nil {
+		_, err = io.Copy(w, io.NewSectionReader(src, insertAt, size-insertAt))
+	}
+	return err
+}
+
+// insertOffset returns the byte offset of the first entry later than t, or
+// size when there is none. It scans backwards, so a recent backfill reads
+// only the end of the file.
+func insertOffset(f *os.File, size int64, t time.Time) (int64, error) {
+	insertAt := size
+	s := NewReverseLineScanner(f)
+	for s.Scan() {
+		// Non-entry lines (headers, notes) stay with the entry above them
+		existing, err := entry.ParseEntry(s.Text())
+		if err != nil {
+			continue
+		}
+		if !existing.Time.After(t) {
+			break
+		}
+		insertAt = s.LineStart()
+	}
+	return insertAt, s.Err()
+}
+
+// rewrite atomically replaces the log at path with the output of write, which
+// reads the current contents from src. The new contents go to a temp file in
+// the same directory that is synced and renamed over the original, so a crash
+// or full disk leaves the old log intact rather than half-rewritten. The
+// original is opened read/write first so a read-only log is refused, not
+// silently replaced.
+func rewrite(path string, write func(w io.Writer, src *os.File, size int64) error) error {
+	src, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	info, err := src.Stat()
+	var tmp *os.File
+	if err == nil {
+		tmp, err = os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	}
+	if err != nil {
+		_ = src.Close()
+		return err
+	}
+
+	err = write(tmp, src, info.Size())
+	_ = src.Close() // before the rename, which Windows refuses on open files
+	if err == nil {
+		err = tmp.Sync()
+	}
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(tmp.Name(), info.Mode().Perm())
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), path)
+	}
+	if err != nil {
+		_ = os.Remove(tmp.Name())
+	}
+	return err
+}
+
+// lockTimeout is how long a writer waits for another process to release the
+// log lock before giving up; lockRetry is the polling interval.
+var (
+	lockTimeout = 5 * time.Second
+	lockRetry   = 10 * time.Millisecond
+)
+
+// withLock runs fn while holding an exclusive lock on the log at path, so
+// concurrent writers (e.g. an agent backfilling in parallel) cannot lose each
+// other's entries. The lock is a sibling file created with O_EXCL, which is
+// atomic on every platform. Readers do not lock: rewrites replace the log by
+// rename, so a reader always sees a complete file.
+func withLock(path string, fn func() error) error {
+	lock := path + ".lock"
+	deadline := time.Now().Add(lockTimeout)
+	for {
+		f, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+		if err == nil {
+			_ = f.Close()
+			break
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return &lockError{path: lock, err: err}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("log file is locked by another logger-txt process; if none is running, delete %s", lock)
+		}
+		time.Sleep(lockRetry)
+	}
+	defer func() { _ = os.Remove(lock) }()
+	return fn()
+}
+
+// createAndResolve creates the log if it is missing, then resolves symlinks.
+// Creating it first means every alias of the log, including a symlink whose
+// target did not exist yet, resolves to the same real file and so shares one
+// lock. Creating an existing file is a no-op, so this is safe outside the lock.
+func createAndResolve(path string) (string, error) {
+	if err := EnsureFile(path); err != nil {
+		return "", err
+	}
+	return resolvePath(path), nil
+}
+
+// lockError reports that the lock file could not be created, as opposed to a
+// failure while writing the log under the lock.
+type lockError struct {
+	path string
+	err  error
+}
+
+func (e *lockError) Error() string {
+	return fmt.Sprintf("could not create lock file %s: %v", e.path, errors.Unwrap(e.err))
+}
+
+// resolvePath follows symlinks so a rewrite replaces the real log file
+// rather than the link pointing at it, and every alias of the log shares one
+// lock.
+func resolvePath(path string) string {
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		return real
+	}
+	return path
+}
+
+// endsWithoutNewline reports whether the file's last byte is something other
+// than a newline, so a line written at the end would join onto the last line.
+func endsWithoutNewline(f *os.File, size int64) bool {
+	last := make([]byte, 1)
+	_, err := f.ReadAt(last, size-1)
+	return err == nil && last[0] != '\n'
 }
 
 // Tail returns the last n lines from the file. When filter is non-nil,
@@ -171,32 +360,40 @@ func scanRange(s *ReverseLineScanner, start, end time.Time, fn func(entry.Entry)
 	return collected, nil
 }
 
-// DeleteLast removes the last line from the file and returns it.
-func DeleteLast(path string) (string, error) {
-	data, err := os.ReadFile(path)
+// DeleteLast removes the last line from the file and returns it. It refuses,
+// leaving the file unchanged, unless the last line is still expected: the
+// line the caller showed for confirmation before another writer could add one.
+func DeleteLast(path, expected string) (string, error) {
+	path = resolvePath(path)
+	var deleted string
+	err := withLock(path, func() error {
+		return rewrite(path, func(w io.Writer, src *os.File, _ int64) error {
+			return copyWithoutLastLine(w, src, expected, &deleted)
+		})
+	})
 	if err != nil {
 		return "", err
 	}
-
-	content := strings.TrimRight(string(data), "\r\n")
-	if content == "" {
-		return "", fmt.Errorf("file is empty")
-	}
-
-	idx := strings.LastIndex(content, "\n")
-	var deleted string
-	var remaining string
-	if idx < 0 {
-		// Only one line in the file
-		deleted = content
-		remaining = ""
-	} else {
-		deleted = content[idx+1:]
-		remaining = content[:idx+1]
-	}
-
-	if err := os.WriteFile(path, []byte(remaining), 0644); err != nil {
-		return "", err
-	}
 	return deleted, nil
+}
+
+// copyWithoutLastLine copies src to w without its last line, which it stores
+// in deleted, provided that line is expected.
+func copyWithoutLastLine(w io.Writer, src *os.File, expected string, deleted *string) error {
+	data, err := io.ReadAll(src)
+	content := strings.TrimRight(string(data), "\r\n")
+	if err == nil && content == "" {
+		err = fmt.Errorf("file is empty")
+	}
+	if err != nil {
+		return err
+	}
+	idx := strings.LastIndex(content, "\n")
+	last := content[idx+1:]
+	if last != expected {
+		return fmt.Errorf("the last line changed since it was shown, so nothing was deleted; run delete again")
+	}
+	*deleted = last
+	_, err = io.WriteString(w, content[:idx+1])
+	return err
 }
