@@ -42,7 +42,9 @@ entry is one line, so line breaks in the message, type or project are rejected.
 Use --at to backfill an entry at a past time instead of now. The value uses
 DD/MM/YY HH:MM format (quote it on the CLI) and must include a time; date-only
 values and future times are rejected. The time is read in the local time zone
-with the UTC offset that applied on that date. The entry is inserted in
+with the UTC offset that applied on that date. A time skipped when clocks
+spring forward is rejected; for the hour repeated when clocks fall back, check
+the offset in the confirmation. The entry is inserted in
 chronological order, after any existing entries with the same or an earlier
 timestamp, and the confirmation echoes the timestamp that was written.
 

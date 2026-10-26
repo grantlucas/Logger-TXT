@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	_ "time/tzdata" // DST rows need real zones on any CI runner
 )
 
 func TestParseInputTime_DateOnly(t *testing.T) {
@@ -148,23 +149,31 @@ func TestParseDateRange_InvalidEnd(t *testing.T) {
 }
 
 func TestParseAtTime(t *testing.T) {
-	loc := time.FixedZone("EST", -5*3600)
-	now := time.Date(2026, 10, 26, 12, 0, 0, 0, loc)
+	est := time.FixedZone("EST", -5*3600)
+	toronto, err := time.LoadLocation("America/Toronto")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, est)
 	tests := []struct {
 		name    string
 		input   string
+		loc     *time.Location
 		want    time.Time
 		wantErr string
 	}{
-		{"valid datetime", "20/10/26 14:30", time.Date(2026, 10, 20, 14, 30, 0, 0, loc), ""},
-		{"exactly now", "26/10/26 12:00", now, ""},
-		{"date only", "20/10/26", time.Time{}, "requires a time"},
-		{"garbage", "last tuesday", time.Time{}, "invalid --at value"},
-		{"future", "26/10/26 12:01", time.Time{}, "is in the future"},
+		{"valid datetime", "20/10/26 14:30", est, time.Date(2026, 10, 20, 14, 30, 0, 0, est), ""},
+		{"exactly now", "26/10/26 12:00", est, now, ""},
+		{"date only", "20/10/26", est, time.Time{}, "requires a time"},
+		{"garbage", "last tuesday", est, time.Time{}, "invalid --at value"},
+		{"future", "26/10/26 12:01", est, time.Time{}, "is in the future"},
+		// Clocks jumped from 02:00 to 03:00 on 8 March 2026
+		{"skipped by daylight saving", "08/03/26 02:30", toronto, time.Time{}, "does not exist"},
+		{"just after daylight saving gap", "08/03/26 03:30", toronto, time.Date(2026, 3, 8, 3, 30, 0, 0, toronto), ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseAtTime(tt.input, loc, now)
+			got, err := ParseAtTime(tt.input, tt.loc, now)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("ParseAtTime(%q) error = %v, want containing %q", tt.input, err, tt.wantErr)

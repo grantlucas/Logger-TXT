@@ -36,6 +36,7 @@ func TestAddHelp(t *testing.T) {
 		"--at",
 		"chronological order",
 		"must include a time",
+		"spring forward is rejected",
 		"not the entry you backfilled",
 	})
 }
