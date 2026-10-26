@@ -42,9 +42,9 @@ func Append(path string, e entry.Entry) error {
 	return err
 }
 
-// Insert writes the entry into the file in chronological position, after the
-// last entry whose timestamp is not later than e.Time. Only the lines after
-// the insertion point are rewritten.
+// Insert writes the entry into the file in chronological position, just
+// before the first entry whose timestamp is later than e.Time. Lines that are
+// not entries stay with the entry above them.
 func Insert(path string, e entry.Entry) error {
 	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -59,22 +59,38 @@ func Insert(path string, e entry.Entry) error {
 	size := s.offset // scanner starts positioned at EOF
 	insertAt := size
 	for s.Scan() {
+		// Non-entry lines (headers, notes) stay with the entry above them
 		existing, err := entry.ParseEntry(s.Text())
-		if err == nil && !existing.Time.After(e.Time) {
+		if err != nil {
+			continue
+		}
+		if !existing.Time.After(e.Time) {
 			break
 		}
 		insertAt = s.LineStart()
 	}
 
+	line := e.Format() + "\n"
+	if insertAt == size && endsWithoutNewline(f, size) {
+		line = "\n" + line
+	}
 	tail := make([]byte, size-insertAt)
 	err = s.Err()
 	if err == nil {
 		_, err = f.ReadAt(tail, insertAt)
 	}
 	if err == nil {
-		_, err = f.WriteAt(append([]byte(e.Format()+"\n"), tail...), insertAt)
+		_, err = f.WriteAt(append([]byte(line), tail...), insertAt)
 	}
 	return err
+}
+
+// endsWithoutNewline reports whether the file's last byte is something other
+// than a newline, so a line written at the end would join onto the last line.
+func endsWithoutNewline(f *os.File, size int64) bool {
+	last := make([]byte, 1)
+	_, err := f.ReadAt(last, size-1)
+	return err == nil && last[0] != '\n'
 }
 
 // Tail returns the last n lines from the file. When filter is non-nil,

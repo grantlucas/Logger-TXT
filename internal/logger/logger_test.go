@@ -695,6 +695,7 @@ func TestInsert(t *testing.T) {
 	tests := []struct {
 		name    string
 		content string
+		noFile  bool
 		want    string
 	}{
 		{
@@ -718,9 +719,25 @@ func TestInsert(t *testing.T) {
 			want:    "21/10/26 12:00 -0500 - A1\n21/10/26 12:00 -0500 - A2\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
 		},
 		{
-			name:    "passes over unparseable lines",
-			content: "20/10/26 09:00 -0500 - A\nnot an entry\n22/10/26 09:00 -0500 - C\n",
-			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\nnot an entry\n22/10/26 09:00 -0500 - C\n",
+			name:    "keeps non-entry lines with the entry above them",
+			content: "20/10/26 09:00 -0500 - A\nnote about A\n22/10/26 09:00 -0500 - C\n",
+			want:    "20/10/26 09:00 -0500 - A\nnote about A\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			name:    "keeps a header above the earliest entry",
+			content: "# Work log\n22/10/26 09:00 -0500 - C\n",
+			want:    "# Work log\n21/10/26 12:00 -0500 - B\n22/10/26 09:00 -0500 - C\n",
+		},
+		{
+			// Blank lines belong to the entry above, same as mid-file
+			name:    "after trailing blank lines",
+			content: "20/10/26 09:00 -0500 - A\n\n\n",
+			want:    "20/10/26 09:00 -0500 - A\n\n\n21/10/26 12:00 -0500 - B\n",
+		},
+		{
+			name:    "last line has no trailing newline",
+			content: "20/10/26 09:00 -0500 - A",
+			want:    "20/10/26 09:00 -0500 - A\n21/10/26 12:00 -0500 - B\n",
 		},
 		{
 			name:    "CRLF line endings",
@@ -739,14 +756,15 @@ func TestInsert(t *testing.T) {
 			want:    "21/10/26 12:00 -0500 - B\n",
 		},
 		{
-			name: "missing file",
-			want: "21/10/26 12:00 -0500 - B\n",
+			name:   "missing file",
+			noFile: true,
+			want:   "21/10/26 12:00 -0500 - B\n",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "log.txt")
-			if tt.name != "missing file" {
+			if !tt.noFile {
 				if err := os.WriteFile(path, []byte(tt.content), 0644); err != nil {
 					t.Fatal(err)
 				}
