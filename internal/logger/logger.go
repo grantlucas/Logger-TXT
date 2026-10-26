@@ -32,19 +32,22 @@ func Append(path string, e entry.Entry) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
-	if err != nil {
+	path = resolvePath(path)
+	return withLock(path, func() error {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		line := e.Format() + "\n"
+		if size, _ := f.Seek(0, io.SeekEnd); endsWithoutNewline(f, size) {
+			line = "\n" + line
+		}
+		_, err = f.WriteString(line)
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
 		return err
-	}
-	line := e.Format() + "\n"
-	if size, _ := f.Seek(0, io.SeekEnd); endsWithoutNewline(f, size) {
-		line = "\n" + line
-	}
-	_, err = f.WriteString(line)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	return err
+	})
 }
 
 // Insert writes the entry into the file in chronological position, just
@@ -55,8 +58,10 @@ func Insert(path string, e entry.Entry) error {
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return Append(path, e)
 	}
-	return rewrite(path, func(w io.Writer, src *os.File, size int64) error {
-		return copyWithInsert(w, src, size, e)
+	return withLock(path, func() error {
+		return rewrite(path, func(w io.Writer, src *os.File, size int64) error {
+			return copyWithInsert(w, src, size, e)
+		})
 	})
 }
 
@@ -140,8 +145,42 @@ func rewrite(path string, write func(w io.Writer, src *os.File, size int64) erro
 	return err
 }
 
+// lockTimeout is how long a writer waits for another process to release the
+// log lock before giving up; lockRetry is the polling interval.
+var (
+	lockTimeout = 5 * time.Second
+	lockRetry   = 10 * time.Millisecond
+)
+
+// withLock runs fn while holding an exclusive lock on the log at path, so
+// concurrent writers (e.g. an agent backfilling in parallel) cannot lose each
+// other's entries. The lock is a sibling file created with O_EXCL, which is
+// atomic on every platform. Readers do not lock: rewrites replace the log by
+// rename, so a reader always sees a complete file.
+func withLock(path string, fn func() error) error {
+	lock := path + ".lock"
+	deadline := time.Now().Add(lockTimeout)
+	for {
+		f, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+		if err == nil {
+			_ = f.Close()
+			break
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("log file is locked by another logger-txt process; if none is running, delete %s", lock)
+		}
+		time.Sleep(lockRetry)
+	}
+	defer func() { _ = os.Remove(lock) }()
+	return fn()
+}
+
 // resolvePath follows symlinks so a rewrite replaces the real log file
-// rather than the link pointing at it.
+// rather than the link pointing at it, and every alias of the log shares one
+// lock.
 func resolvePath(path string) string {
 	if real, err := filepath.EvalSymlinks(path); err == nil {
 		return real
@@ -290,23 +329,32 @@ func scanRange(s *ReverseLineScanner, start, end time.Time, fn func(entry.Entry)
 
 // DeleteLast removes the last line from the file and returns it.
 func DeleteLast(path string) (string, error) {
+	path = resolvePath(path)
 	var deleted string
-	err := rewrite(resolvePath(path), func(w io.Writer, src *os.File, _ int64) error {
-		data, err := io.ReadAll(src)
-		content := strings.TrimRight(string(data), "\r\n")
-		if err == nil && content == "" {
-			err = fmt.Errorf("file is empty")
-		}
-		if err != nil {
-			return err
-		}
-		idx := strings.LastIndex(content, "\n")
-		deleted = content[idx+1:]
-		_, err = io.WriteString(w, content[:idx+1])
-		return err
+	err := withLock(path, func() error {
+		return rewrite(path, func(w io.Writer, src *os.File, _ int64) error {
+			return copyWithoutLastLine(w, src, &deleted)
+		})
 	})
 	if err != nil {
 		return "", err
 	}
 	return deleted, nil
+}
+
+// copyWithoutLastLine copies src to w without its last line, which it stores
+// in deleted.
+func copyWithoutLastLine(w io.Writer, src *os.File, deleted *string) error {
+	data, err := io.ReadAll(src)
+	content := strings.TrimRight(string(data), "\r\n")
+	if err == nil && content == "" {
+		err = fmt.Errorf("file is empty")
+	}
+	if err != nil {
+		return err
+	}
+	idx := strings.LastIndex(content, "\n")
+	*deleted = content[idx+1:]
+	_, err = io.WriteString(w, content[:idx+1])
+	return err
 }

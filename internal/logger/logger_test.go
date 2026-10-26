@@ -1,8 +1,11 @@
 package logger_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -861,6 +864,77 @@ func TestWriters_PreserveLogFile(t *testing.T) {
 			}
 			if files, _ := os.ReadDir(dir); len(files) != 2 {
 				t.Errorf("directory has %d files, want only the log and its symlink", len(files))
+			}
+		})
+	}
+}
+
+func TestWriters_ConcurrentWritesAreNotLost(t *testing.T) {
+	est := time.FixedZone("EST", -5*3600)
+	path := filepath.Join(t.TempDir(), "log.txt")
+	if err := os.WriteFile(path, []byte("20/10/26 00:00 -0500 - start\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Backfills land between start and the appends, which are all later
+	const inserts, appends = 30, 10
+	var wg sync.WaitGroup
+	errs := make(chan error, inserts+appends)
+	for i := range inserts {
+		wg.Go(func() {
+			at := time.Date(2026, 10, 21, 0, i, 0, 0, est)
+			errs <- logger.Insert(path, entry.Entry{Time: at, Message: fmt.Sprintf("insert %02d", i)})
+		})
+	}
+	for i := range appends {
+		wg.Go(func() {
+			at := time.Date(2026, 10, 22, 0, 0, 0, 0, est)
+			errs <- logger.Append(path, entry.Entry{Time: at, Message: fmt.Sprintf("append %02d", i)})
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("write error = %v", err)
+		}
+	}
+
+	data, _ := os.ReadFile(path)
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(lines) != 1+inserts+appends {
+		t.Fatalf("got %d lines, want %d:\n%s", len(lines), 1+inserts+appends, data)
+	}
+	for i := range inserts {
+		if want := fmt.Sprintf("insert %02d", i); !strings.HasSuffix(lines[1+i], want) {
+			t.Errorf("line %d = %q, want %q", 1+i, lines[1+i], want)
+		}
+	}
+}
+
+func TestWriters_RefuseReadOnlyLogAndReleaseLock(t *testing.T) {
+	e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+	tests := []struct {
+		name string
+		op   func(path string) error
+	}{
+		{"Append", func(p string) error { return logger.Append(p, e) }},
+		{"Insert", func(p string) error { return logger.Insert(p, e) }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "log.txt")
+			if err := os.WriteFile(path, []byte("20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"), 0444); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tt.op(path); err == nil {
+				t.Fatalf("%s() expected error for read-only log, got nil", tt.name)
+			}
+			if _, err := os.Stat(path + ".lock"); !os.IsNotExist(err) {
+				t.Errorf("lock file left behind after failure (stat err %v)", err)
 			}
 		})
 	}
