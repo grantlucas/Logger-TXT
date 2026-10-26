@@ -15,6 +15,7 @@ type ReverseLineScanner struct {
 	offset int64
 	buf    string
 	line   string
+	start  int64
 	err    error
 	done   bool
 }
@@ -36,6 +37,7 @@ func (s *ReverseLineScanner) Scan() bool {
 		// Try to extract a line from the buffer
 		if idx := strings.LastIndex(s.buf, "\n"); idx >= 0 {
 			s.line = strings.TrimRight(s.buf[idx+1:], "\r")
+			s.start = s.offset + int64(idx) + 1
 			s.buf = s.buf[:idx]
 			// Skip empty lines from trailing newlines
 			if s.line == "" {
@@ -48,6 +50,7 @@ func (s *ReverseLineScanner) Scan() bool {
 		if s.done {
 			// No more data to read; remaining buffer is the first line
 			s.line = strings.TrimRight(s.buf, "\r")
+			s.start = 0
 			s.buf = ""
 			return s.line != ""
 		}
@@ -77,6 +80,12 @@ func (s *ReverseLineScanner) Scan() bool {
 // Text returns the most recent line produced by Scan.
 func (s *ReverseLineScanner) Text() string {
 	return s.line
+}
+
+// LineStart returns the byte offset in the file where the most recent line
+// produced by Scan begins.
+func (s *ReverseLineScanner) LineStart() int64 {
+	return s.start
 }
 
 // Err returns the first non-EOF error encountered.

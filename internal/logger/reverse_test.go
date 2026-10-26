@@ -121,3 +121,32 @@ func TestReverseLineScanner_MultipleLines(t *testing.T) {
 		}
 	}
 }
+
+func TestReverseLineScanner_LineStart(t *testing.T) {
+	long := strings.Repeat("x", 5000)
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{"LF", "first\nsecond\nthird\n"},
+		{"no trailing newline", "first\nsecond\nthird"},
+		{"CRLF", "first\r\nsecond\r\nthird\r\n"},
+		{"blank lines", "first\n\nsecond\n\n\nthird\n"},
+		{"chunk boundary", long + "\n" + long + "b\n" + long + "c\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewReverseLineScanner(writeTempFile(t, tt.content))
+			n := 0
+			for s.Scan() {
+				n++
+				if !strings.HasPrefix(tt.content[s.LineStart():], s.Text()) {
+					t.Errorf("LineStart() = %d does not point at %q", s.LineStart(), s.Text())
+				}
+			}
+			if n != 3 {
+				t.Errorf("scanned %d lines, want 3", n)
+			}
+		})
+	}
+}
