@@ -4,6 +4,7 @@ package logger
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -31,11 +32,15 @@ func Append(path string, e entry.Entry) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
-	_, err = f.WriteString(e.Format() + "\n")
+	line := e.Format() + "\n"
+	if size, _ := f.Seek(0, io.SeekEnd); endsWithoutNewline(f, size) {
+		line = "\n" + line
+	}
+	_, err = f.WriteString(line)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}

@@ -122,6 +122,23 @@ func TestAppend_AppendsToExistingFile(t *testing.T) {
 	}
 }
 
+func TestAppend_StartsNewLineWhenFileLacksTrailingNewline(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.txt")
+	if err := os.WriteFile(path, []byte("22/02/26 09:00 -0500 - Edited by hand"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := logger.Append(path, entry.Entry{Time: testTime(), Message: "Next"}); err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+
+	got, _ := os.ReadFile(path)
+	want := "22/02/26 09:00 -0500 - Edited by hand\n22/02/26 10:30 -0500 - Next\n"
+	if string(got) != want {
+		t.Fatalf("file content = %q, want %q", got, want)
+	}
+}
+
 func TestAppend_ErrorOnUnwritablePath(t *testing.T) {
 	err := logger.Append("/dev/null/impossible/log.txt", entry.Entry{Message: "test"})
 	if err == nil {
