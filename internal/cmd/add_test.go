@@ -234,3 +234,60 @@ func TestAddCmd_At(t *testing.T) {
 		})
 	}
 }
+
+func TestAddCmd_LockFileCannotBeCreated(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantOut  string
+		wantWarn bool
+		wantErr  bool
+	}{
+		{
+			name:     "plain add warns and appends",
+			args:     []string{"add", "New entry"},
+			wantOut:  `"New entry" logged`,
+			wantWarn: true,
+		},
+		{
+			// Backfilling rewrites the log, which needs the directory too
+			name:    "backfill fails",
+			args:    []string{"add", "--at", "04/03/26 10:00", "New entry"},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			logFile := writeLogFile(t, dir, "03/03/26 09:00 -0500 - Existing entry\n")
+			if err := os.Chmod(dir, 0555); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0755) })
+			lock := logFile + ".lock"
+
+			out, errOut, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), lock) {
+					t.Fatalf("error = %v, want one naming %s", err, lock)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(out, tt.wantOut) {
+				t.Errorf("output = %q, want containing %q", out, tt.wantOut)
+			}
+			if tt.wantWarn && (!strings.Contains(errOut, "warning:") || !strings.Contains(errOut, lock)) {
+				t.Errorf("stderr = %q, want a warning naming %s", errOut, lock)
+			}
+			if data, _ := os.ReadFile(logFile); !strings.Contains(string(data), "New entry") {
+				t.Errorf("entry not written: %q", data)
+			}
+		})
+	}
+}

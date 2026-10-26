@@ -37,17 +37,17 @@ func newAddCmd() *cobra.Command {
 			}
 
 			// Backfilled entries are inserted in chronological position
-			write := logger.Append
+			write := func() error { return logger.Append(path, e, cmd.ErrOrStderr()) }
 			if backfill {
 				t, err := entry.ParseAtTime(at, e.Time.Location(), e.Time)
 				if err != nil {
 					return err
 				}
 				e.Time = t
-				write = logger.Insert
+				write = func() error { return logger.Insert(path, e) }
 			}
 
-			if err := write(path, e); err != nil {
+			if err := write(); err != nil {
 				return err
 			}
 

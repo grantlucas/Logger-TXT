@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,7 @@ func TestWriters_FailWhenLockIsHeld(t *testing.T) {
 		name string
 		op   func(path string) error
 	}{
-		{"Append", func(p string) error { return Append(p, e) }},
+		{"Append", func(p string) error { return Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return Insert(p, e) }},
 		{"DeleteLast", func(p string) error { _, err := DeleteLast(p); return err }},
 	}
@@ -62,8 +63,8 @@ func TestWriters_DanglingSymlinkSharesTargetLock(t *testing.T) {
 		hops int
 		op   func(path string) error
 	}{
-		{"Append through one link", 1, func(p string) error { return Append(p, e) }},
-		{"Append through a chain of links", 2, func(p string) error { return Append(p, e) }},
+		{"Append through one link", 1, func(p string) error { return Append(p, e, io.Discard) }},
+		{"Append through a chain of links", 2, func(p string) error { return Append(p, e, io.Discard) }},
 		{"Insert through one link", 1, func(p string) error { return Insert(p, e) }},
 		{"Insert through a chain of links", 2, func(p string) error { return Insert(p, e) }},
 	}

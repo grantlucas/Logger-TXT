@@ -27,13 +27,16 @@ func EnsureFile(path string) error {
 }
 
 // Append formats the entry and appends it as a new line to the file.
-// Creates the file and parent directories if they don't exist.
-func Append(path string, e entry.Entry) error {
+// Creates the file and parent directories if they don't exist. If the log's
+// directory doesn't allow creating the lock file, it appends without the lock
+// and writes a warning to warn. A single append is safe unlocked, and the
+// writers that need the lock can't rewrite a log in that directory anyway.
+func Append(path string, e entry.Entry, warn io.Writer) error {
 	path, err := createAndResolve(path)
 	if err != nil {
 		return err
 	}
-	return withLock(path, func() error {
+	write := func() error {
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0)
 		if err != nil {
 			return err
@@ -47,7 +50,14 @@ func Append(path string, e entry.Entry) error {
 			err = cerr
 		}
 		return err
-	})
+	}
+	err = withLock(path, write)
+	var lerr *lockError
+	if errors.As(err, &lerr) && errors.Is(lerr.err, fs.ErrPermission) {
+		_, _ = fmt.Fprintf(warn, "warning: %v; appended without the lock\n", lerr)
+		return write()
+	}
+	return err
 }
 
 // Insert writes the entry into the file in chronological position, just
@@ -168,7 +178,7 @@ func withLock(path string, fn func() error) error {
 			break
 		}
 		if !errors.Is(err, fs.ErrExist) {
-			return err
+			return &lockError{path: lock, err: err}
 		}
 		if time.Now().After(deadline) {
 			return fmt.Errorf("log file is locked by another logger-txt process; if none is running, delete %s", lock)
@@ -188,6 +198,17 @@ func createAndResolve(path string) (string, error) {
 		return "", err
 	}
 	return resolvePath(path), nil
+}
+
+// lockError reports that the lock file could not be created, as opposed to a
+// failure while writing the log under the lock.
+type lockError struct {
+	path string
+	err  error
+}
+
+func (e *lockError) Error() string {
+	return fmt.Sprintf("could not create lock file %s: %v", e.path, errors.Unwrap(e.err))
 }
 
 // resolvePath follows symlinks so a rewrite replaces the real log file

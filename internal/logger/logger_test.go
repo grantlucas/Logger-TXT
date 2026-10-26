@@ -1,7 +1,9 @@
 package logger_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,7 +95,7 @@ func TestAppend_WritesToNewFile(t *testing.T) {
 	path := filepath.Join(dir, "log.txt")
 	e := entry.Entry{Time: testTime(), Message: "Grabbed a coffee"}
 
-	err := logger.Append(path, e)
+	err := logger.Append(path, e, io.Discard)
 	if err != nil {
 		t.Fatalf("Append() error = %v", err)
 	}
@@ -111,10 +113,10 @@ func TestAppend_AppendsToExistingFile(t *testing.T) {
 	e1 := entry.Entry{Time: testTime(), Message: "First entry"}
 	e2 := entry.Entry{Time: testTime(), Type: "WORK", Message: "Second entry"}
 
-	if err := logger.Append(path, e1); err != nil {
+	if err := logger.Append(path, e1, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := logger.Append(path, e2); err != nil {
+	if err := logger.Append(path, e2, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,7 +133,7 @@ func TestAppend_StartsNewLineWhenFileLacksTrailingNewline(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := logger.Append(path, entry.Entry{Time: testTime(), Message: "Next"}); err != nil {
+	if err := logger.Append(path, entry.Entry{Time: testTime(), Message: "Next"}, io.Discard); err != nil {
 		t.Fatalf("Append() error = %v", err)
 	}
 
@@ -143,7 +145,7 @@ func TestAppend_StartsNewLineWhenFileLacksTrailingNewline(t *testing.T) {
 }
 
 func TestAppend_ErrorOnUnwritablePath(t *testing.T) {
-	err := logger.Append("/dev/null/impossible/log.txt", entry.Entry{Message: "test"})
+	err := logger.Append("/dev/null/impossible/log.txt", entry.Entry{Message: "test"}, io.Discard)
 	if err == nil {
 		t.Fatal("Append() expected error for unwritable path, got nil")
 	}
@@ -156,9 +158,56 @@ func TestAppend_ErrorOnReadOnlyDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := logger.Append(filepath.Join(readOnly, "log.txt"), entry.Entry{Message: "test"})
+	err := logger.Append(filepath.Join(readOnly, "log.txt"), entry.Entry{Message: "test"}, io.Discard)
 	if err == nil {
 		t.Fatal("Append() expected error for read-only directory, got nil")
+	}
+}
+
+func TestAppend_WarnsAndAppendsWhenLockFileCannotBeCreated(t *testing.T) {
+	tests := []struct {
+		name     string
+		dirPerm  os.FileMode
+		wantWarn bool
+	}{
+		{"lock file created", 0755, false},
+		{"directory not writable", 0555, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "log.txt")
+			const existing = "20/10/26 09:00 -0500 - A\n"
+			if err := os.WriteFile(path, []byte(existing), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(dir, tt.dirPerm); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0755) })
+
+			var warn bytes.Buffer
+			e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+			if err := logger.Append(path, e, &warn); err != nil {
+				t.Fatalf("Append() error = %v", err)
+			}
+
+			want := existing + "21/10/26 12:00 -0500 - B\n"
+			if got, _ := os.ReadFile(path); string(got) != want {
+				t.Errorf("file content = %q, want %q", got, want)
+			}
+			lock := path + ".lock"
+			if tt.wantWarn {
+				if !strings.Contains(warn.String(), "warning:") || !strings.Contains(warn.String(), lock) {
+					t.Errorf("warning = %q, want one naming %s", warn.String(), lock)
+				}
+			} else if warn.Len() != 0 {
+				t.Errorf("unexpected warning: %q", warn.String())
+			}
+		})
 	}
 }
 
@@ -832,7 +881,7 @@ func TestWriters_PreserveLogFile(t *testing.T) {
 		name string
 		op   func(path string) error
 	}{
-		{"Append", func(p string) error { return logger.Append(p, e) }},
+		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return logger.Insert(p, e) }},
 		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
 	}
@@ -889,7 +938,7 @@ func TestWriters_ConcurrentWritesAreNotLost(t *testing.T) {
 	for i := range appends {
 		wg.Go(func() {
 			at := time.Date(2026, 10, 22, 0, 0, 0, 0, est)
-			errs <- logger.Append(path, entry.Entry{Time: at, Message: fmt.Sprintf("append %02d", i)})
+			errs <- logger.Append(path, entry.Entry{Time: at, Message: fmt.Sprintf("append %02d", i)}, io.Discard)
 		})
 	}
 	wg.Wait()
@@ -918,7 +967,7 @@ func TestWriters_RefuseUnusableLogAndReleaseLock(t *testing.T) {
 		name string
 		op   func(path string) error
 	}{
-		{"Append", func(p string) error { return logger.Append(p, e) }},
+		{"Append", func(p string) error { return logger.Append(p, e, io.Discard) }},
 		{"Insert", func(p string) error { return logger.Insert(p, e) }},
 		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
 	}
