@@ -15,9 +15,12 @@ type Entry struct {
 	Message string
 }
 
+// TimeLayout is the timestamp format at the start of every log line.
+const TimeLayout = "02/01/06 15:04 -0700"
+
 // Format returns the log line string for this entry.
 func (e Entry) Format() string {
-	s := e.Time.Format("02/01/06 15:04 -0700") + " - "
+	s := e.Time.Format(TimeLayout) + " - "
 	if e.Type != "" && e.Project != "" {
 		s += e.Type + " (" + e.Project + ") - "
 	} else if e.Type != "" {
@@ -29,8 +32,6 @@ func (e Entry) Format() string {
 	return s
 }
 
-const timeLayout = "02/01/06 15:04 -0700"
-
 // ParseEntry parses a log line into an Entry.
 func ParseEntry(line string) (Entry, error) {
 	// Timestamp is fixed-width: "DD/MM/YY HH:MM +ZZZZ" = 20 chars
@@ -38,7 +39,7 @@ func ParseEntry(line string) (Entry, error) {
 		return Entry{}, fmt.Errorf("line too short: %q", line)
 	}
 
-	t, err := time.Parse(timeLayout, line[:20])
+	t, err := time.Parse(TimeLayout, line[:20])
 	if err != nil {
 		return Entry{}, fmt.Errorf("invalid timestamp: %w", err)
 	}

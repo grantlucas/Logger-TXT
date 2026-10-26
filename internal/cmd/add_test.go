@@ -163,3 +163,67 @@ func TestAddCmd_SimpleMessage(t *testing.T) {
 		t.Errorf("unexpected file content: %q", content)
 	}
 }
+
+func TestAddCmd_At(t *testing.T) {
+	const existing = "03/03/26 09:00 -0500 - A\n05/03/26 09:00 -0500 - C\n"
+	tests := []struct {
+		name     string
+		args     []string
+		wantOut  string
+		wantErr  string
+		wantFile string
+	}{
+		{
+			name:     "inserts between existing entries",
+			args:     []string{"add", "--at", "04/03/26 14:30", "-t", "work", "Reviewed", "budget"},
+			wantOut:  `"Reviewed budget" logged under the type WORK at 04/03/26 14:30 -0500`,
+			wantFile: "03/03/26 09:00 -0500 - A\n04/03/26 14:30 -0500 - WORK - Reviewed budget\n05/03/26 09:00 -0500 - C\n",
+		},
+		{
+			name:     "appends when newest",
+			args:     []string{"add", "--at", "06/03/26 08:15", "D"},
+			wantOut:  `"D" logged at 06/03/26 08:15 -0500`,
+			wantFile: existing + "06/03/26 08:15 -0500 - D\n",
+		},
+		{
+			name:     "rejects date without time",
+			args:     []string{"add", "--at", "04/03/26", "X"},
+			wantErr:  "--at requires a time",
+			wantFile: existing,
+		},
+		{
+			name:     "rejects future time",
+			args:     []string{"add", "--at", "01/01/68 10:00", "X"},
+			wantErr:  "is in the future",
+			wantFile: existing,
+		},
+		{
+			name:     "rejects unparseable time",
+			args:     []string{"add", "--at", "yesterday 3pm", "X"},
+			wantErr:  "invalid --at value",
+			wantFile: existing,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logFile := writeLogFile(t, t.TempDir(), existing)
+
+			out, _, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("error = %v, want containing %q", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if !strings.Contains(out, tt.wantOut) {
+				t.Errorf("output = %q, want containing %q", out, tt.wantOut)
+			}
+			data, _ := os.ReadFile(logFile)
+			if string(data) != tt.wantFile {
+				t.Errorf("file content = %q, want %q", data, tt.wantFile)
+			}
+		})
+	}
+}
