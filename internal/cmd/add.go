@@ -35,6 +35,9 @@ func newAddCmd() *cobra.Command {
 				Project: project,
 				Message: message,
 			}
+			if err := e.Validate(); err != nil {
+				return err
+			}
 
 			// Backfilled entries are inserted in chronological position
 			write := func() error { return logger.Append(path, e, cmd.ErrOrStderr()) }

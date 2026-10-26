@@ -36,7 +36,8 @@ const rootExample = `  # Add a simple entry
 const addLong = `Add a new timestamped entry to the log file.
 
 The -t (type) and -p (project) flags are automatically uppercased, so
-"-t meeting" becomes "MEETING" in the log. The message is logged as-is.
+"-t meeting" becomes "MEETING" in the log. The message is logged as-is. Each
+entry is one line, so line breaks in the message, type or project are rejected.
 
 Use --at to backfill an entry at a past time instead of now. The value uses
 DD/MM/YY HH:MM format (quote it on the CLI) and must include a time; date-only

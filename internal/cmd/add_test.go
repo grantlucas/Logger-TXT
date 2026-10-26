@@ -291,3 +291,30 @@ func TestAddCmd_LockFileCannotBeCreated(t *testing.T) {
 		})
 	}
 }
+
+func TestAddCmd_RejectsLineBreaks(t *testing.T) {
+	const existing = "03/03/26 09:00 -0500 - A\n"
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{"newline in message", []string{"add", "notes\n01/01/20 00:00 -0400 - forged"}, "message must be a single line"},
+		{"newline in backfilled message", []string{"add", "--at", "04/03/26 10:00", "notes\nmore"}, "message must be a single line"},
+		{"carriage return in type", []string{"add", "-t", "work\rx", "m"}, "type must be a single line"},
+		{"newline in project", []string{"add", "-p", "api\nx", "m"}, "project must be a single line"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logFile := writeLogFile(t, t.TempDir(), existing)
+
+			_, _, err := executeCmd(t, append([]string{"--file", logFile}, tt.args...)...)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+			}
+			if data, _ := os.ReadFile(logFile); string(data) != existing {
+				t.Errorf("file content = %q, want unchanged", data)
+			}
+		})
+	}
+}

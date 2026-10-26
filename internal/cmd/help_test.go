@@ -31,6 +31,7 @@ func TestRootHelp(t *testing.T) {
 func TestAddHelp(t *testing.T) {
 	assertHelpContains(t, []string{"add", "--help"}, []string{
 		"automatically uppercase",
+		"line breaks in the message",
 		"logger-txt add",
 		"--at",
 		"chronological order",

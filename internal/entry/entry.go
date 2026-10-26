@@ -32,6 +32,23 @@ func (e Entry) Format() string {
 	return s
 }
 
+// Validate reports an error if a field contains a line break. Each entry must
+// be one line: a break would split it, and a continuation that starts with a
+// timestamp would read back as a separate, possibly out-of-order entry.
+func (e Entry) Validate() error {
+	fields := []struct{ name, value string }{
+		{"message", e.Message},
+		{"type", e.Type},
+		{"project", e.Project},
+	}
+	for _, f := range fields {
+		if strings.ContainsAny(f.value, "\r\n") {
+			return fmt.Errorf("%s must be a single line: remove line breaks", f.name)
+		}
+	}
+	return nil
+}
+
 // ParseEntry parses a log line into an Entry.
 func ParseEntry(line string) (Entry, error) {
 	// Timestamp is fixed-width: "DD/MM/YY HH:MM +ZZZZ" = 20 chars
