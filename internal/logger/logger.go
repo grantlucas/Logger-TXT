@@ -51,43 +51,102 @@ func Append(path string, e entry.Entry) error {
 // before the first entry whose timestamp is later than e.Time. Lines that are
 // not entries stay with the entry above them.
 func Insert(path string, e entry.Entry) error {
-	f, err := os.OpenFile(path, os.O_RDWR, 0644)
-	if errors.Is(err, fs.ErrNotExist) {
+	path = resolvePath(path)
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return Append(path, e)
 	}
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
+	return rewrite(path, func(w io.Writer, src *os.File, size int64) error {
+		return copyWithInsert(w, src, size, e)
+	})
+}
 
-	s := NewReverseLineScanner(f)
-	size := s.offset // scanner starts positioned at EOF
+// copyWithInsert copies src to w with e inserted in chronological position.
+func copyWithInsert(w io.Writer, src *os.File, size int64, e entry.Entry) error {
+	insertAt, err := insertOffset(src, size, e.Time)
+	line := e.Format() + "\n"
+	if insertAt == size && endsWithoutNewline(src, size) {
+		line = "\n" + line
+	}
+	if err == nil {
+		_, err = io.Copy(w, io.NewSectionReader(src, 0, insertAt))
+	}
+	if err == nil {
+		_, err = io.WriteString(w, line)
+	}
+	if err == nil {
+		_, err = io.Copy(w, io.NewSectionReader(src, insertAt, size-insertAt))
+	}
+	return err
+}
+
+// insertOffset returns the byte offset of the first entry later than t, or
+// size when there is none. It scans backwards, so a recent backfill reads
+// only the end of the file.
+func insertOffset(f *os.File, size int64, t time.Time) (int64, error) {
 	insertAt := size
+	s := NewReverseLineScanner(f)
 	for s.Scan() {
 		// Non-entry lines (headers, notes) stay with the entry above them
 		existing, err := entry.ParseEntry(s.Text())
 		if err != nil {
 			continue
 		}
-		if !existing.Time.After(e.Time) {
+		if !existing.Time.After(t) {
 			break
 		}
 		insertAt = s.LineStart()
 	}
+	return insertAt, s.Err()
+}
 
-	line := e.Format() + "\n"
-	if insertAt == size && endsWithoutNewline(f, size) {
-		line = "\n" + line
+// rewrite atomically replaces the log at path with the output of write, which
+// reads the current contents from src. The new contents go to a temp file in
+// the same directory that is synced and renamed over the original, so a crash
+// or full disk leaves the old log intact rather than half-rewritten. The
+// original is opened read/write first so a read-only log is refused, not
+// silently replaced.
+func rewrite(path string, write func(w io.Writer, src *os.File, size int64) error) error {
+	src, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
 	}
-	tail := make([]byte, size-insertAt)
-	err = s.Err()
+	info, err := src.Stat()
+	var tmp *os.File
 	if err == nil {
-		_, err = f.ReadAt(tail, insertAt)
+		tmp, err = os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	}
+	if err != nil {
+		_ = src.Close()
+		return err
+	}
+
+	err = write(tmp, src, info.Size())
+	_ = src.Close() // before the rename, which Windows refuses on open files
+	if err == nil {
+		err = tmp.Sync()
+	}
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
 	}
 	if err == nil {
-		_, err = f.WriteAt(append([]byte(line), tail...), insertAt)
+		err = os.Chmod(tmp.Name(), info.Mode().Perm())
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), path)
+	}
+	if err != nil {
+		_ = os.Remove(tmp.Name())
 	}
 	return err
+}
+
+// resolvePath follows symlinks so a rewrite replaces the real log file
+// rather than the link pointing at it.
+func resolvePath(path string) string {
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		return real
+	}
+	return path
 }
 
 // endsWithoutNewline reports whether the file's last byte is something other
@@ -231,29 +290,22 @@ func scanRange(s *ReverseLineScanner, start, end time.Time, fn func(entry.Entry)
 
 // DeleteLast removes the last line from the file and returns it.
 func DeleteLast(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-
-	content := strings.TrimRight(string(data), "\r\n")
-	if content == "" {
-		return "", fmt.Errorf("file is empty")
-	}
-
-	idx := strings.LastIndex(content, "\n")
 	var deleted string
-	var remaining string
-	if idx < 0 {
-		// Only one line in the file
-		deleted = content
-		remaining = ""
-	} else {
+	err := rewrite(resolvePath(path), func(w io.Writer, src *os.File, _ int64) error {
+		data, err := io.ReadAll(src)
+		content := strings.TrimRight(string(data), "\r\n")
+		if err == nil && content == "" {
+			err = fmt.Errorf("file is empty")
+		}
+		if err != nil {
+			return err
+		}
+		idx := strings.LastIndex(content, "\n")
 		deleted = content[idx+1:]
-		remaining = content[:idx+1]
-	}
-
-	if err := os.WriteFile(path, []byte(remaining), 0644); err != nil {
+		_, err = io.WriteString(w, content[:idx+1])
+		return err
+	})
+	if err != nil {
 		return "", err
 	}
 	return deleted, nil

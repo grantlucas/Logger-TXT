@@ -822,3 +822,46 @@ func TestInsert_ErrorOnUnwritablePath(t *testing.T) {
 		})
 	}
 }
+
+func TestWriters_PreserveLogFile(t *testing.T) {
+	e := entry.Entry{Time: time.Date(2026, 10, 21, 12, 0, 0, 0, time.FixedZone("EST", -5*3600)), Message: "B"}
+	tests := []struct {
+		name string
+		op   func(path string) error
+	}{
+		{"Append", func(p string) error { return logger.Append(p, e) }},
+		{"Insert", func(p string) error { return logger.Insert(p, e) }},
+		{"DeleteLast", func(p string) error { _, err := logger.DeleteLast(p); return err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "real.txt")
+			content := "20/10/26 09:00 -0500 - A\n22/10/26 09:00 -0500 - C\n"
+			if err := os.WriteFile(target, []byte(content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			link := filepath.Join(dir, "log.txt")
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tt.op(link); err != nil {
+				t.Fatalf("%s() error = %v", tt.name, err)
+			}
+
+			if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+				t.Errorf("log path is no longer a symlink (err %v)", err)
+			}
+			if got, _ := os.ReadFile(target); string(got) == content {
+				t.Error("symlink target was not updated")
+			}
+			if fi, _ := os.Stat(target); fi.Mode().Perm() != 0600 {
+				t.Errorf("permissions = %v, want 0600", fi.Mode().Perm())
+			}
+			if files, _ := os.ReadDir(dir); len(files) != 2 {
+				t.Errorf("directory has %d files, want only the log and its symlink", len(files))
+			}
+		})
+	}
+}
