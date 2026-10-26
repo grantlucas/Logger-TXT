@@ -1,6 +1,7 @@
 package entry
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -143,5 +144,39 @@ func TestParseDateRange_InvalidEnd(t *testing.T) {
 	_, _, err := ParseDateRange("22/02/26", "bad", loc)
 	if err == nil {
 		t.Fatal("expected error for invalid end")
+	}
+}
+
+func TestParseAtTime(t *testing.T) {
+	loc := time.FixedZone("EST", -5*3600)
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, loc)
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr string
+	}{
+		{"valid datetime", "20/10/26 14:30", time.Date(2026, 10, 20, 14, 30, 0, 0, loc), ""},
+		{"exactly now", "26/10/26 12:00", now, ""},
+		{"date only", "20/10/26", time.Time{}, "requires a time"},
+		{"garbage", "last tuesday", time.Time{}, "invalid --at value"},
+		{"future", "26/10/26 12:01", time.Time{}, "is in the future"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseAtTime(tt.input, loc, now)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("ParseAtTime(%q) error = %v, want containing %q", tt.input, err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ParseAtTime(%q) error = %v", tt.input, err)
+			}
+			if !got.Equal(tt.want) {
+				t.Errorf("ParseAtTime(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
 	}
 }

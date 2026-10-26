@@ -48,3 +48,19 @@ func EndOfDay(t time.Time) time.Time {
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 23, 59, 0, 0, t.Location())
 }
+
+// ParseAtTime parses a backfill timestamp in DD/MM/YY HH:MM format. A time
+// component is required and the result must not be later than now.
+func ParseAtTime(input string, loc *time.Location, now time.Time) (time.Time, error) {
+	t, dateOnly, err := ParseInputTime(input, loc)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid --at value: %w", err)
+	}
+	if dateOnly {
+		return time.Time{}, fmt.Errorf("--at requires a time: DD/MM/YY HH:MM")
+	}
+	if t.After(now) {
+		return time.Time{}, fmt.Errorf("--at value %q is in the future", input)
+	}
+	return t, nil
+}
