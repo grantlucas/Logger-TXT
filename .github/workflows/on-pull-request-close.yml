@@ -31,7 +31,7 @@ jobs:
 
       - name: "Semantic Versioning"
         id: semver
-        uses: paulhatch/semantic-version@4d6da96a9bc3116da3613309a11ff75fba58eb8d # v6.0.4
+        uses: paulhatch/semantic-version@5ae1354e589c5a67345fb2c6e65b025ff676d7c7 # v6.0.7
         with:
           tag_prefix: "v"
           major_pattern: "/(MAJOR)|!:|BREAKING CHANGE:/"
